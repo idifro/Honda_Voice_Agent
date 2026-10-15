@@ -1,0 +1,47 @@
+{
+  "id": "cbr1000rr-r-sp",
+  "name": "Honda CBR1000RR-R Fireblade SP",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "superbike",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/cbr1000rr-r-sp",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 3350000,
+    "max": 3350000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "SP",
+      "ex_showroom_inr": 3350000
+    }
+  ],
+  "specs": {
+    "engine": "999cc liquid-cooled inline-four",
+    "displacement_cc": 999
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "fireblade",
+    "cbr1000",
+    "cbr 1000 rr r",
+    "fire blade"
+  ],
+  "pitch": "Honda's flagship superbike.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

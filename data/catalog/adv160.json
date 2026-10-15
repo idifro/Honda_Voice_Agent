@@ -1,0 +1,58 @@
+{
+  "id": "adv160",
+  "name": "Honda ADV160",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "adventure-scooter",
+  "division": "RedWing/BigWing",
+  "fuel": "petrol",
+  "status": "pre_booking",
+  "official_url": "https://www.honda2wheelersindia.com/scooter/adv160-new",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 170000,
+    "max": 170000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes",
+    "notes": "Pre-book listing"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 170000
+    }
+  ],
+  "specs": {
+    "engine": "160cc single-cylinder, water-cooled",
+    "displacement_cc": 157,
+    "fuel_tank_l": 8.1,
+    "underseat_storage_l": 27,
+    "fuel_compatibility": "Up to E85 (first scooter in India per Honda)",
+    "transmission": "Automatic CVT"
+  },
+  "features": [
+    "City-adventure styling",
+    "E85 flex-fuel capable",
+    "8.1 L tank",
+    "27 L under-seat storage"
+  ],
+  "colours": [],
+  "aliases": [
+    "adv",
+    "adv 160",
+    "adv160",
+    "a d v"
+  ],
+  "pitch": "City-adventure scooter: water-cooled 160cc, 8.1 L tank, 27 L storage, runs on up to E85 fuel.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

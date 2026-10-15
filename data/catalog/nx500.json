@@ -1,0 +1,56 @@
+{
+  "id": "nx500",
+  "name": "Honda NX500 E-Clutch",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "adventure-tourer",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/nx-500-E-Clutch",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 750000,
+    "max": 750000,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes",
+    "notes": "Autocar India expert answer says 'nearly Rs 7.50 lakh'; June 2026 list showed Rs 6.33 lakh (pre E-Clutch). Confirm."
+  },
+  "variants": [
+    {
+      "name": "E-Clutch",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "471cc liquid-cooled parallel-twin",
+    "displacement_cc": 471,
+    "max_power": "35 kW @ 8600 rpm",
+    "max_torque": "43 Nm @ 6500 rpm",
+    "transmission": "6-speed with Honda E-Clutch",
+    "fuel_tank_l": 17.5
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "nx500",
+    "nx 500",
+    "n x 500"
+  ],
+  "pitch": "Road-biased adventure tourer with a smooth 471cc twin and Honda E-Clutch.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes",
+    "https://www.autocarindia.com/bikes/honda-bikes/cb300r"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque",
+    "fuel_tank_l"
+  ],
+  "snapshot_date": "2026-10-14"
+}

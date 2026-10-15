@@ -1,0 +1,67 @@
+{
+  "id": "cb350c",
+  "name": "Honda CB350C",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "retro-classic",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/CB350C",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 200000,
+    "max": 205000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes",
+    "notes": "3 variants incl. Special Edition"
+  },
+  "variants": [
+    {
+      "name": "DLX",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "DLX Pro",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "Special Edition",
+      "ex_showroom_inr": null,
+      "notes": "Launched Sep 2025 at Rs 2,01,900 ex-showroom Bengaluru; Rebel Red Metallic, Matt Dune Brown"
+    }
+  ],
+  "specs": {
+    "engine": "348.36cc air-cooled 4-stroke single, PGM-FI, OBD2B, E20 compliant",
+    "displacement_cc": 348.36,
+    "max_power": "15.5 kW @ 5500 rpm",
+    "max_torque": "29.5 Nm @ 3000 rpm",
+    "transmission": "5-speed manual, assist & slipper clutch",
+    "traction_control": "HSTC (Honda Selectable Torque Control)",
+    "abs": "Dual-channel",
+    "connectivity": "Honda Smartphone Voice Control (HSVCS)",
+    "top_speed_kmph": 130,
+    "instrument_cluster": "Digital-analogue"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "cb350c",
+    "cb 350 c",
+    "350 c"
+  ],
+  "pitch": "Rebranded classic CB350 with Special Edition stripes, dual-channel ABS and HSTC.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-and-scooter-india-launches-all-new-cb350c-special-edition",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [
+    "variants"
+  ],
+  "snapshot_date": "2026-10-14"
+}

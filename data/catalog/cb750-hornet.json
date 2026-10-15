@@ -1,0 +1,52 @@
+{
+  "id": "cb750-hornet",
+  "name": "Honda CB750 Hornet E-Clutch",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "street",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/CB750-Hornet-E-Clutch",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 1049000,
+    "max": 1049000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "E-Clutch",
+      "ex_showroom_inr": 1049000
+    }
+  ],
+  "specs": {
+    "engine": "755cc liquid-cooled parallel-twin",
+    "displacement_cc": 755,
+    "max_power": "67.5 kW @ 9500 rpm",
+    "max_torque": "75 Nm @ 7250 rpm",
+    "transmission": "6-speed with Honda E-Clutch"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "cb750",
+    "hornet 750",
+    "cb 750 hornet"
+  ],
+  "pitch": "755cc twin-cylinder street-naked with E-Clutch.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque"
+  ],
+  "snapshot_date": "2026-10-14"
+}

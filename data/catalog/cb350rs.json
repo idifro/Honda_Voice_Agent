@@ -1,0 +1,65 @@
+{
+  "id": "cb350rs",
+  "name": "Honda CB350RS",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "retro-scrambler",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/CB350RS",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 197000,
+    "max": 200000,
+    "as_of": "2026-06-30",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes/cb300r"
+  },
+  "variants": [
+    {
+      "name": "DLX",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "DLX Pro",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "348.36cc air-cooled 4-stroke single, PGM-FI, OBD2B, E20 compliant",
+    "displacement_cc": 348.36,
+    "max_power": "15.5 kW @ 5500 rpm",
+    "max_torque": "29.5 Nm @ 3000 rpm",
+    "transmission": "5-speed manual, assist & slipper clutch",
+    "traction_control": "HSTC (Honda Selectable Torque Control)",
+    "abs": "Dual-channel",
+    "connectivity": "Honda Smartphone Voice Control (HSVCS)",
+    "seat_height_mm": 800,
+    "fuel_tank_l": 15
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "cb350rs",
+    "cb 350 rs",
+    "rs 350",
+    "350 rs"
+  ],
+  "pitch": "Sportier, scrambler-styled take on the CB350 platform.",
+  "pitch_status": "draft - review before use",
+  "notes": [
+    "New colours announced July 2026 ('CB350RS New' on Honda site)."
+  ],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes/cb300r",
+    "https://www.zigwheels.com/newbikes/Honda/2022-cb1000r"
+  ],
+  "unverified_fields": [
+    "fuel_tank_l",
+    "variants"
+  ],
+  "snapshot_date": "2026-10-14"
+}

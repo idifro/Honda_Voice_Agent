@@ -1,0 +1,50 @@
+{
+  "id": "rebel-500",
+  "name": "Honda Rebel 500",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "cruiser",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "upcoming",
+  "official_url": null,
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 440000,
+    "max": 460000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes",
+    "notes": "Expected price; expected launch Nov 2026"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "E-Clutch",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "471cc liquid-cooled parallel-twin",
+    "displacement_cc": 471
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "rebel 500"
+  ],
+  "pitch": "Upcoming mid-size twin-cylinder cruiser; take a callback lead, no test rides yet.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

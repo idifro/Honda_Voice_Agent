@@ -1,0 +1,60 @@
+{
+  "id": "hornet-2-0",
+  "name": "Honda Hornet 2.0",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "street",
+  "division": "RedWing/BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/hornet-2-0",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 148000,
+    "max": 148000,
+    "as_of": "2026-07-04",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes/hornet-2.0/price-in-delhi"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 148000
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi",
+    "displacement_cc": 184.4,
+    "max_power": "12.7 kW @ 8500 rpm",
+    "max_torque": "15.9 Nm @ 6000 rpm",
+    "transmission": "5-speed manual, assist & slipper clutch",
+    "front_suspension": "USD fork",
+    "abs": "Single-channel",
+    "fuel_tank_l": 12
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "hornet",
+    "hornet 2.0",
+    "hornet two point o",
+    "hornet 200",
+    "हॉर्नेट"
+  ],
+  "pitch": "184cc street-naked with USD fork and slipper clutch; the sporty pick under 1.5 lakh.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes/hornet-2.0/price-in-delhi"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque",
+    "transmission",
+    "abs",
+    "fuel_tank_l"
+  ],
+  "snapshot_date": "2026-10-14"
+}

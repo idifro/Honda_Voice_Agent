@@ -1,0 +1,56 @@
+{
+  "id": "rebel-300",
+  "name": "Honda Rebel 300",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "cruiser",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/Rebel300",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 222000,
+    "max": 262000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 222000,
+      "inferred": true
+    },
+    {
+      "name": "E-Clutch",
+      "ex_showroom_inr": 262000,
+      "inferred": true
+    }
+  ],
+  "specs": {
+    "engine": "286cc liquid-cooled single",
+    "displacement_cc": 286,
+    "transmission": "6-speed manual; E-Clutch variant automates clutch"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "rebel",
+    "rebel 300",
+    "rebal"
+  ],
+  "pitch": "Entry bobber-style cruiser with low seat; E-Clutch option for easy city riding.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [
+    "transmission"
+  ],
+  "snapshot_date": "2026-10-14"
+}

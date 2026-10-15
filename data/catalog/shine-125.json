@@ -1,0 +1,72 @@
+{
+  "id": "shine-125",
+  "name": "Honda Shine 125",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/shine-125",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 82250,
+    "max": 87610,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "3 variants: Drum, Disc, Limited Edition"
+  },
+  "variants": [
+    {
+      "name": "Drum",
+      "ex_showroom_inr": 82250,
+      "inferred": true
+    },
+    {
+      "name": "Disc",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "Limited Edition",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi, OBD2B",
+    "displacement_cc": 123.94,
+    "max_power": "7.93 kW @ 7500 rpm",
+    "max_torque": "11 Nm @ 6000 rpm",
+    "transmission": "5-speed manual",
+    "fuel_tank_l": 10.5,
+    "top_speed_kmph": 102,
+    "mileage_kmpl": {
+      "value": "50-55",
+      "basis": "Autocar India efficiency"
+    }
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "shine",
+    "shine 125",
+    "shine sava sau",
+    "शाइन"
+  ],
+  "pitch": "India's top-selling 125cc motorcycle: refined, comfortable and frugal.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "https://www.autocarindia.com/bikes/honda-bikes",
+    "https://bikeadvice.in/?p=92857"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque",
+    "fuel_tank_l"
+  ],
+  "snapshot_date": "2026-10-14"
+}

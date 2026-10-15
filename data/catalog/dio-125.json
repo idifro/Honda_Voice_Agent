@@ -1,0 +1,88 @@
+{
+  "id": "dio-125",
+  "name": "Honda Dio 125",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "scooter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/scooter/dio-125",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 87260,
+    "max": 92210,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "3 variants per Autocar India listing"
+  },
+  "variants": [
+    {
+      "name": "DLX",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "H-Smart",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "X-Edition",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi, OBD2B",
+    "displacement_cc": 123.92,
+    "max_power": "8.19 bhp @ 6500 rpm",
+    "max_torque": "10.5 Nm @ 5000 rpm",
+    "bore_x_stroke_mm": "50 x 63.1",
+    "transmission": "Automatic CVT (centrifugal dry clutch)",
+    "fuel_tank_l": 5.3,
+    "reserve_fuel_l": 1.3,
+    "kerb_weight_kg": 105,
+    "seat_height_mm": 765,
+    "ground_clearance_mm": 171,
+    "length_mm": 1830,
+    "front_suspension": "Telescopic",
+    "rear_suspension": "3-step adjustable spring-loaded hydraulic",
+    "front_brake": "Disc 190 mm",
+    "rear_brake": "Drum 130 mm",
+    "braking_system": "CBS",
+    "tyre_front": "90/90-12 tubeless",
+    "tyre_rear": "90/100-10 tubeless",
+    "wheels": "Alloy",
+    "top_speed_kmph": 85,
+    "mileage_kmpl": {
+      "value": 48,
+      "basis": "ARAI (as reported by Team-BHP)"
+    }
+  },
+  "features": [
+    "Smart key (H-Smart)",
+    "Idling stop",
+    "Distance-to-empty indicator",
+    "LED headlamp"
+  ],
+  "colours": [],
+  "aliases": [
+    "dio 125",
+    "dio sava sau",
+    "dio x edition"
+  ],
+  "pitch": "Sportier 125cc sibling of the Dio with front disc and smart-key option.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes/dio-125/specifications",
+    "https://www.team-bhp.com/new-bikes/honda/dio-125/specifications/",
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14",
+  "service": {
+    "standard_warranty": "3 years / 36,000 km (whichever earlier)"
+  }
+}

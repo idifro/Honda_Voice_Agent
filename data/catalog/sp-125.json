@@ -1,0 +1,83 @@
+{
+  "id": "sp-125",
+  "name": "Honda SP125",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/sp-125",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 89280,
+    "max": 96870,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "2 variants per Autocar India; a 25-year Anniversary Edition launched Aug 2025 at Rs 94,069 (pre-GST cut)"
+  },
+  "variants": [
+    {
+      "name": "Drum",
+      "ex_showroom_inr": 89280,
+      "inferred": true
+    },
+    {
+      "name": "Disc",
+      "ex_showroom_inr": 96870,
+      "inferred": true
+    },
+    {
+      "name": "25-year Anniversary Edition",
+      "ex_showroom_inr": null,
+      "notes": "Availability may vary"
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi, OBD2B",
+    "displacement_cc": 123.94,
+    "max_power": "8 kW @ 7500 rpm",
+    "max_torque": "10.9 Nm @ 6000 rpm",
+    "transmission": "5-speed manual",
+    "fuel_tank_l": 11.2,
+    "headlamp": "Full LED",
+    "instrument_cluster": "4.2-inch TFT",
+    "charging": "USB Type-C",
+    "top_speed_kmph": 100,
+    "mileage_kmpl": {
+      "value": 61.87,
+      "basis": "Autocar India efficiency"
+    }
+  },
+  "features": [
+    "4.2-inch TFT",
+    "LED headlamp",
+    "USB-C charging",
+    "Side-stand engine inhibitor"
+  ],
+  "colours": [],
+  "aliases": [
+    "sp 125",
+    "sp125",
+    "s p 125",
+    "sp sava sau",
+    "एसपी 125"
+  ],
+  "pitch": "Sporty 125cc commuter with LED headlamp and 4.2-inch TFT, about 62 kmpl.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "https://www.autocarindia.com/bikes/honda-bikes",
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-celebrates-25-years-of-trust-launches-25-year-anniversary-editions"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque",
+    "fuel_tank_l"
+  ],
+  "snapshot_date": "2026-10-14"
+}

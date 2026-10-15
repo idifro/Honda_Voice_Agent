@@ -1,0 +1,67 @@
+{
+  "id": "livo",
+  "name": "Honda Livo",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/livo",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 80080,
+    "max": 82650,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "2 variants per Autocar India"
+  },
+  "variants": [
+    {
+      "name": "Drum",
+      "ex_showroom_inr": 80080,
+      "inferred": true
+    },
+    {
+      "name": "Disc",
+      "ex_showroom_inr": 82650,
+      "inferred": true
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi",
+    "displacement_cc": 109.51,
+    "max_power": "about 8.55 hp",
+    "max_torque": "9.30 Nm @ 5500 rpm",
+    "transmission": "4-speed manual",
+    "seat_height_mm": 790,
+    "fuel_tank_l": 9,
+    "top_speed_kmph": 85,
+    "mileage_kmpl": {
+      "value": "58-65",
+      "basis": "Autocar India efficiency"
+    }
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "livo",
+    "leevo",
+    "लिवो"
+  ],
+  "pitch": "110cc commuter motorcycle with a manual 4-speed gearbox and 58-65 kmpl real-world efficiency.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [
+    "max_torque",
+    "fuel_tank_l"
+  ],
+  "snapshot_date": "2026-10-14"
+}

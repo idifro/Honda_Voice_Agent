@@ -1,0 +1,68 @@
+{
+  "id": "shine-100-dx",
+  "name": "Honda Shine 100 DX",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/shine-100-dx",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 72150,
+    "max": 72150,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "Launched Aug 2025 at Rs 74,959 ex-showroom Gurugram (pre-GST cut)"
+  },
+  "variants": [
+    {
+      "name": "DX",
+      "ex_showroom_inr": 72150
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, fuel-injected, eSP, OBD2B",
+    "displacement_cc": 98.98,
+    "max_power": "5.43 kW @ 7500 rpm",
+    "max_torque": "8.04 Nm @ 5000 rpm",
+    "transmission": "4-speed manual",
+    "front_suspension": "Telescopic",
+    "rear_suspension": "5-step adjustable",
+    "front_brake": "Drum",
+    "rear_brake": "Drum",
+    "braking_system": "CBS",
+    "instrument_cluster": "Digital LCD (real-time mileage, distance-to-empty, service reminder)",
+    "top_speed_kmph": 85
+  },
+  "features": [
+    "Chrome-garnished headlamp",
+    "Long seat",
+    "Chrome muffler cover",
+    "High ground clearance"
+  ],
+  "colours": [
+    "Pearl Igneous Black",
+    "Imperial Red Metallic",
+    "Athletic Blue Metallic",
+    "Geny Gray Metallic"
+  ],
+  "aliases": [
+    "shine 100 dx",
+    "shine dx",
+    "shine 100 deluxe"
+  ],
+  "pitch": "Premium-looking Shine 100 with a digital LCD showing real-time mileage and distance-to-empty.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-announces-prices-for-the-all-new-shine-100-dx",
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

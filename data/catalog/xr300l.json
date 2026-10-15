@@ -1,0 +1,48 @@
+{
+  "id": "xr300l",
+  "name": "Honda XR300L",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "dual-sport",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "pre_booking",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/xr300l",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 183000,
+    "max": 183000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 183000
+    }
+  ],
+  "specs": {
+    "engine": "293.5cc air-cooled single with oil-cooler",
+    "displacement_cc": 293.5,
+    "suspension": "Long-travel"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "xr300l",
+    "xr 300",
+    "x r 300 l"
+  ],
+  "pitch": "Light dual-purpose bike for weekend trails and weekday city use.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

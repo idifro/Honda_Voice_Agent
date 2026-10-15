@@ -1,0 +1,65 @@
+{
+  "id": "cb125-hornet",
+  "name": "Honda CB125 Hornet",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "sporty-commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/CB125-Hornet",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 115000,
+    "max": 115000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes",
+    "notes": "Launched Aug 2025 at introductory Rs 1,12,000 ex-showroom Gurugram"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 115000
+    }
+  ],
+  "specs": {
+    "engine": "123.94cc single-cylinder, fuel-injected, OBD2B",
+    "displacement_cc": 123.94,
+    "max_power": "8.2 kW @ 7500 rpm",
+    "max_torque": "11.2 Nm @ 6000 rpm",
+    "transmission": "5-speed manual",
+    "front_suspension": "Golden USD fork (37 mm, first in segment)",
+    "rear_suspension": "5-step adjustable monoshock",
+    "front_brake": "240 mm petal disc",
+    "abs": "Single-channel",
+    "instrument_cluster": "4.2-inch TFT with Honda RoadSync",
+    "headlamp": "Twin LED with DRLs",
+    "charging": "USB Type-C",
+    "acceleration": "0-60 km/h in 5.4 s (claimed)"
+  },
+  "features": [],
+  "colours": [
+    "Pearl Siren Blue with Lemon Ice Yellow",
+    "Pearl Igneous Black",
+    "Pearl Siren Blue with Athletic Blue Metallic",
+    "Pearl Siren Blue with Sports Red"
+  ],
+  "aliases": [
+    "cb125 hornet",
+    "hornet 125",
+    "cb 125",
+    "chhota hornet"
+  ],
+  "pitch": "Sportiest Honda 125: golden USD fork, single-channel ABS, TFT with RoadSync, 0-60 in 5.4 s.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-announces-prices-for-the-all-new-cb125-hornet",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

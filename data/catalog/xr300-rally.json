@@ -1,0 +1,49 @@
+{
+  "id": "xr300-rally",
+  "name": "Honda XR300 Rally",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "adventure",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "pre_booking",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/xr300rally",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 208000,
+    "max": 208000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 208000
+    }
+  ],
+  "specs": {
+    "engine": "293.5cc air-cooled single with oil-cooler",
+    "displacement_cc": 293.5
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "xr300 rally",
+    "xr rally",
+    "rally 300"
+  ],
+  "pitch": "Rally-styled XR300 aimed at long-distance trail touring.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [
+    "engine"
+  ],
+  "snapshot_date": "2026-10-14"
+}

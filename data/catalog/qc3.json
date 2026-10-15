@@ -1,0 +1,58 @@
+{
+  "id": "qc3",
+  "name": "Honda QC3",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "electric-scooter",
+  "division": "EV",
+  "fuel": "electric",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/e2w/products/qc3",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 135000,
+    "max": 135000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 135000
+    }
+  ],
+  "specs": {
+    "battery": "3 kWh",
+    "range_km": {
+      "value": 151,
+      "basis": "IDC (Honda)",
+      "alt": "145 km as listed by Autocar India"
+    },
+    "charging": "0-80% in 2 h 40 min (claimed)",
+    "underseat_storage_l": 32,
+    "display": "5-inch TFT, connected features"
+  },
+  "features": [
+    "Smart key",
+    "32 L under-seat storage",
+    "Connected TFT"
+  ],
+  "colours": [],
+  "aliases": [
+    "qc3",
+    "q c three",
+    "qc 3"
+  ],
+  "pitch": "Family EV scooter: 3 kWh battery, 151 km IDC range, 32 L storage and smart key.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

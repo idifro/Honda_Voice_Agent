@@ -1,0 +1,75 @@
+{
+  "id": "activa-e",
+  "name": "Honda Activa e:",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "electric-scooter",
+  "division": "EV",
+  "fuel": "electric",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/e2w/products/activa-e",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 118000,
+    "max": 151600,
+    "as_of": "2026-10-14",
+    "precision": "approx",
+    "source": "https://www.zigwheels.com/bike-comparison/honda-activa-electric-vs-honda-qc1",
+    "notes": "Launch prices: Standard Rs 1,17,000, RoadSync Duo Rs 1,51,600. A 2026 report says production was paused; confirm availability with dealer."
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 117000,
+      "notes": "launch price"
+    },
+    {
+      "name": "RoadSync Duo",
+      "ex_showroom_inr": 151600,
+      "notes": "launch price"
+    }
+  ],
+  "specs": {
+    "battery": "2 x 1.5 kWh Honda Mobile Power Pack e: (swappable)",
+    "range_km": {
+      "value": 102,
+      "basis": "claimed"
+    },
+    "ride_modes": [
+      "Econ",
+      "Standard",
+      "Sport"
+    ],
+    "charging": "Battery swapping via Honda e:Swap stations",
+    "display": "7-inch TFT with RoadSync Duo (top variant)"
+  },
+  "features": [
+    "Swappable batteries",
+    "Reverse mode",
+    "Smart key",
+    "Topple alert, navigation, OTA (RoadSync Duo)"
+  ],
+  "colours": [],
+  "aliases": [
+    "activa e",
+    "activa electric",
+    "electric activa",
+    "activa ev",
+    "बिजली वाली ऐक्टिवा"
+  ],
+  "pitch": "Electric Activa with two swappable batteries and about 102 km claimed range; relies on Honda swap stations.",
+  "pitch_status": "draft - review before use",
+  "notes": [
+    "Limited under-seat storage because of the dual-battery layout.",
+    "Sold in select cities with e:Swap network."
+  ],
+  "sources": [
+    "https://gaadify.com/honda-activa-e-and-honda-qc1-electric-scooters-launched/?amp=1",
+    "https://www.motorbeam.com/?p=315007",
+    "https://www.91wheels.com/scooter/honda/qc"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "qc1",
+  "name": "Honda QC1",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "electric-scooter",
+  "division": "EV",
+  "fuel": "electric",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/e2w/products/qc1",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 90490,
+    "max": 90490,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 90490
+    }
+  ],
+  "specs": {
+    "battery": "1.5 kWh fixed",
+    "range_km": {
+      "value": 80,
+      "basis": "claimed"
+    },
+    "top_speed_kmph": 50,
+    "charging": "350W on-board charger, ~6.5 h full charge (claimed)",
+    "underseat_storage_l": 26
+  },
+  "features": [
+    "Home charging",
+    "26 L under-seat storage"
+  ],
+  "colours": [],
+  "aliases": [
+    "qc1",
+    "q c one",
+    "qc 1",
+    "quick commuter"
+  ],
+  "pitch": "Low-speed city EV with a fixed 1.5 kWh battery, about 80 km range and home charging.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "https://www.91wheels.com/scooter/honda/qc"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

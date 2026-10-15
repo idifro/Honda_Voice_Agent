@@ -1,0 +1,51 @@
+{
+  "id": "nx200",
+  "name": "Honda NX200",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "adventure-crossover",
+  "division": "RedWing/BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/nx200",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": null,
+    "max": null,
+    "as_of": null,
+    "precision": "missing",
+    "source": null,
+    "notes": "Fill before seeding"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi",
+    "displacement_cc": 184.4,
+    "transmission": "5-speed manual",
+    "front_suspension": "USD fork"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "nx200",
+    "nx 200",
+    "n x 200"
+  ],
+  "pitch": "Hornet 2.0-based urban adventure crossover with upright ergonomics.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/"
+  ],
+  "unverified_fields": [
+    "front_suspension"
+  ],
+  "snapshot_date": "2026-10-14"
+}

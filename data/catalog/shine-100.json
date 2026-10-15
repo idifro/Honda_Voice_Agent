@@ -1,0 +1,65 @@
+{
+  "id": "shine-100",
+  "name": "Honda Shine 100",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/shine-100",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 65640,
+    "max": 65640,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "Honda's cheapest motorcycle"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": 65640
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, fuel-injected, OBD2B",
+    "displacement_cc": 98.98,
+    "max_power": "5.43 kW @ 7500 rpm",
+    "max_torque": "8.05 Nm @ 5000 rpm",
+    "transmission": "4-speed manual",
+    "fuel_tank_l": 9,
+    "front_brake": "Drum",
+    "rear_brake": "Drum",
+    "braking_system": "CBS",
+    "top_speed_kmph": 85,
+    "mileage_kmpl": {
+      "value": 77,
+      "basis": "Autocar India tested efficiency"
+    }
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "shine 100",
+    "shine sau",
+    "shine hundred",
+    "शाइन 100"
+  ],
+  "pitch": "Honda's most affordable motorcycle: 99cc, light, simple and very fuel-efficient.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque",
+    "fuel_tank_l"
+  ],
+  "snapshot_date": "2026-10-14"
+}

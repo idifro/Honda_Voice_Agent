@@ -1,0 +1,51 @@
+{
+  "id": "gold-wing-tour",
+  "name": "Honda Gold Wing Tour",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "luxury-tourer",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/gold-wing-tour",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 4282000,
+    "max": 4282000,
+    "as_of": "2026-01-31",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes-images/honda-bikes/grazia",
+    "notes": "Autocar Jan 2026 list Rs 42.82 lakh; ZigWheels (Oct 2026) shows Rs 44.30 lakh. Confirm."
+  },
+  "variants": [
+    {
+      "name": "Tour DCT",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "1,833cc flat-six",
+    "displacement_cc": 1833,
+    "transmission": "Automatic (DCT)"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "gold wing",
+    "goldwing",
+    "gold wing tour"
+  ],
+  "pitch": "Flagship luxury tourer with a 1,833cc flat-six and automatic DCT.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes",
+    "https://www.zigwheels.com/newbikes/Honda/2022-cb1000r"
+  ],
+  "unverified_fields": [
+    "transmission"
+  ],
+  "snapshot_date": "2026-10-14"
+}

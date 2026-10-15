@@ -1,0 +1,50 @@
+[project]
+name = "honda-voice"
+version = "0.1.0"
+description = "Honda 2-wheeler multilingual voice sales agent (POC)"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # Verified 2026-10-15 against PyPI and the plugin sources (SPEC §4, §4.1):
+    # - livekit-plugins-sarvam 1.8.8: saaras:v4 + bulbul:v4-flash supported; STT reports the
+    #   detected language (SpeechData.language) and language_probability (as confidence);
+    #   TTS.update_options(target_language_code=...) switches language per turn; no `keyterms`.
+    # - Turn detection: use livekit.agents.inference.TurnDetector (the turn-detector plugin is
+    #   deprecated in 1.8.8). Local v1-mini supports only hi/en of our six; cloud v1 list TBD (step 6).
+    "livekit-agents==1.8.8",
+    "livekit-plugins-sarvam==1.8.8",
+    "livekit-plugins-silero==1.8.8",
+    "livekit-plugins-turn-detector==1.8.8",
+    "livekit-plugins-openai==1.8.8",   # Azure OpenAI LLM client
+    "sarvamai==0.1.37",                # direct SDK: Phase 1 STT comparison (REST, keyterms)
+    "asyncpg==0.32.0",
+    "pydantic>=2.9,<3",
+    "pydantic-settings==2.16.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.17.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/honda_voice"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["frontend", "scripts/build_catalog.py"]   # vendored generator, kept as delivered
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "ASYNC", "DTZ"]   # DTZ: no naive datetimes (CLAUDE.md rule 7)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-m 'not integration'"
+markers = ["integration: needs a real database (DATABASE_URL); run with -m integration"]

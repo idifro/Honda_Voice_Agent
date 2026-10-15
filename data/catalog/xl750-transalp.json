@@ -1,0 +1,67 @@
+{
+  "id": "xl750-transalp",
+  "name": "Honda XL750 Transalp E-Clutch",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "adventure-tourer",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/xl750-transalp-E-Clutch",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 1181000,
+    "max": 1181000,
+    "as_of": "2026-06-30",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes/cb300r",
+    "notes": "June 2026 list; launched Jun 2025 at Rs 10,99,990 ex-showroom Gurugram"
+  },
+  "variants": [
+    {
+      "name": "E-Clutch",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "755cc liquid-cooled parallel-twin",
+    "displacement_cc": 755,
+    "max_power": "67.5 kW @ 9500 rpm",
+    "max_torque": "75 Nm @ 7250 rpm",
+    "transmission": "6-speed, assist & slipper clutch",
+    "riding_modes": [
+      "Sport",
+      "Standard",
+      "Rain",
+      "Gravel",
+      "User"
+    ],
+    "abs": "Dual-channel",
+    "front_suspension": "Showa 43mm SFF-CA USD",
+    "wheels": "21-inch front / 18-inch rear spoke",
+    "front_brake": "Dual 310 mm wave discs",
+    "rear_brake": "256 mm disc",
+    "display": "5-inch TFT with Honda RoadSync"
+  },
+  "features": [],
+  "colours": [
+    "Ross White",
+    "Graphite Black"
+  ],
+  "aliases": [
+    "transalp",
+    "xl750",
+    "trans alp"
+  ],
+  "pitch": "Do-it-all adventure tourer: 755cc twin, 5 riding modes, 21/18-inch wheels.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-launches-2025-xl750-transalp-bookings-open",
+    "https://www.autocarindia.com/bikes/honda-bikes/cb300r"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

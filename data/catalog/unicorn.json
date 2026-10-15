@@ -1,0 +1,60 @@
+{
+  "id": "unicorn",
+  "name": "Honda Unicorn",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "premium-commuter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/unicorn",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": null,
+    "max": null,
+    "as_of": null,
+    "precision": "missing",
+    "source": null,
+    "notes": "Current price not confirmed in this snapshot; fill before seeding"
+  },
+  "variants": [
+    {
+      "name": "Standard",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "Single-cylinder, air-cooled, PGM-Fi",
+    "displacement_cc": 162.71,
+    "max_power": "9.7 kW @ 7500 rpm",
+    "max_torque": "14 Nm @ 5500 rpm",
+    "transmission": "5-speed manual",
+    "fuel_tank_l": 13,
+    "abs": "Single-channel",
+    "mileage_kmpl": {
+      "value": "50-55",
+      "basis": "listing sites"
+    }
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "unicorn",
+    "unikorn",
+    "यूनिकॉर्न"
+  ],
+  "pitch": "Comfort-first 160cc commuter with a plush ride, known for durability.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.bajajfinserv.in/telugu/bmall/bikes/200-cc"
+  ],
+  "unverified_fields": [
+    "max_power",
+    "max_torque",
+    "abs"
+  ],
+  "snapshot_date": "2026-10-14"
+}

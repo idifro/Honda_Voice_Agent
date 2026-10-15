@@ -1,0 +1,98 @@
+{
+  "id": "activa-125",
+  "name": "Honda Activa 125",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "scooter",
+  "division": "RedWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/scooter/activa125",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 90800,
+    "max": 95250,
+    "as_of": "2026-10-09",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh",
+    "notes": "3 variants per Autocar India listing"
+  },
+  "variants": [
+    {
+      "name": "DLX",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "H-Smart",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "25-year Anniversary Edition",
+      "ex_showroom_inr": null,
+      "notes": "Launch price Rs 89,256 ex-showroom Delhi (Aug 2025, pre-GST cut)"
+    }
+  ],
+  "specs": {
+    "engine": "4-stroke, SI, single-cylinder, air-cooled, PGM-Fi, OBD2B",
+    "displacement_cc": 123.92,
+    "max_power": "8.3 bhp @ 6500 rpm",
+    "max_torque": "10.5 Nm @ 5000 rpm",
+    "bore_x_stroke_mm": "50.0 x 63.1",
+    "compression_ratio": "10.0:1",
+    "transmission": "Automatic CVT (centrifugal dry clutch)",
+    "starting": "Self/Kick",
+    "fuel_tank_l": 5.3,
+    "kerb_weight_kg": {
+      "H-Smart (official spec page)": 107
+    },
+    "length_mm": 1850,
+    "width_mm": 707,
+    "height_mm": 1160,
+    "wheelbase_mm": 1260,
+    "ground_clearance_mm": 162,
+    "seat_length_mm": 712,
+    "frame": "Underbone",
+    "front_suspension": "Telescopic",
+    "rear_suspension": "3-step adjustable spring-loaded hydraulic",
+    "front_brake": "Disc 190 mm",
+    "rear_brake": "Drum 130 mm",
+    "braking_system": "CBS",
+    "tyre_front": "90/90-12 54J tubeless",
+    "tyre_rear": "90/100-10 53J tubeless",
+    "wheels": "Alloy",
+    "battery": "12V 5.0Ah",
+    "headlamp": "LED",
+    "top_speed_kmph": 90
+  },
+  "features": [
+    "H-Smart key (H-Smart variant)",
+    "TFT display",
+    "Honda RoadSync",
+    "USB-C charging",
+    "LED headlamp",
+    "Idling stop system",
+    "Side-stand engine cut-off"
+  ],
+  "colours": [],
+  "aliases": [
+    "activa 125",
+    "activa sava sau",
+    "activa ek sau pachees",
+    "ऐक्टिवा 125"
+  ],
+  "pitch": "The 125cc Activa: more torque than the 110, front disc brake and LED headlamp, family-friendly scooter.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://honda2wheelersindia.com/activa125-OBD2B/specifications",
+    "https://www.autocarindia.com/bikes/honda-bikes/activa-125/specifications",
+    "https://www.autocarindia.com/bikes/honda-bikes-under-1-lakh"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14",
+  "service": {
+    "standard_warranty": "3 years / 36,000 km (whichever earlier)"
+  }
+}

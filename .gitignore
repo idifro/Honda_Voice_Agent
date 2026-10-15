@@ -1,0 +1,33 @@
+# Secrets (CLAUDE.md rule 1) — only *.example files are tracked
+.env
+.env.local
+frontend/.env.local
+secrets/
+
+# Caller audio (SPEC §15, §17)
+evals/recordings/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Frontend
+node_modules/
+frontend/.next/
+frontend/out/
+
+# Logs and local output
+*.log
+logs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

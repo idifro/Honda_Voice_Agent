@@ -1,0 +1,49 @@
+{
+  "id": "cb1000-hornet-sp",
+  "name": "Honda CB1000 Hornet SP",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "street",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/cb1000-hornet-sp",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 1329000,
+    "max": 1329000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "SP",
+      "ex_showroom_inr": 1329000
+    }
+  ],
+  "specs": {
+    "engine": "999cc liquid-cooled inline-four",
+    "displacement_cc": 999
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "hornet 1000",
+    "cb1000",
+    "thousand hornet"
+  ],
+  "pitch": "Litre-class inline-four naked in SP spec.",
+  "pitch_status": "draft - review before use",
+  "notes": [
+    "Voluntary recall (Nov 2025) for change-pedal pivot bolt on certain 2025 units; fixed free at BigWing Topline dealers."
+  ],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes",
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-announces-market-campaign-for-cb1000-hornet-sp"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}

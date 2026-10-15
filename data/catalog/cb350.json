@@ -1,0 +1,60 @@
+{
+  "id": "cb350",
+  "name": "Honda CB350",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "retro-classic",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/CB350",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 197000,
+    "max": 200000,
+    "as_of": "2026-06-30",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes/cb300r"
+  },
+  "variants": [
+    {
+      "name": "DLX",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "DLX Pro",
+      "ex_showroom_inr": null
+    }
+  ],
+  "specs": {
+    "engine": "348.36cc air-cooled 4-stroke single, PGM-FI, OBD2B, E20 compliant",
+    "displacement_cc": 348.36,
+    "max_power": "15.5 kW @ 5500 rpm",
+    "max_torque": "29.5 Nm @ 3000 rpm",
+    "transmission": "5-speed manual, assist & slipper clutch",
+    "traction_control": "HSTC (Honda Selectable Torque Control)",
+    "abs": "Dual-channel",
+    "connectivity": "Honda Smartphone Voice Control (HSVCS)"
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "cb350",
+    "cb 350",
+    "c b 350"
+  ],
+  "pitch": "Classic-styled CB350 with the same refined 348cc engine.",
+  "pitch_status": "draft - review before use",
+  "notes": [
+    "New colours announced July 2026 ('CB350 New')."
+  ],
+  "sources": [
+    "https://www.autocarindia.com/bikes/honda-bikes/cb300r"
+  ],
+  "unverified_fields": [
+    "variants"
+  ],
+  "snapshot_date": "2026-10-14"
+}

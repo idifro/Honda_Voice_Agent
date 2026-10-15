@@ -1,0 +1,57 @@
+{
+  "id": "cb500",
+  "name": "Honda CB500",
+  "brand": "Honda",
+  "market": "India",
+  "segment": "heritage-roadster",
+  "division": "BigWing",
+  "fuel": "petrol",
+  "status": "on_sale",
+  "official_url": "https://www.honda2wheelersindia.com/motorcycle/CB500",
+  "price": {
+    "currency": "INR",
+    "type": "ex-showroom",
+    "city": "Delhi",
+    "min": 275000,
+    "max": 302000,
+    "as_of": "2026-10-12",
+    "precision": "approx",
+    "source": "https://www.autocarindia.com/bikes/honda-bikes"
+  },
+  "variants": [
+    {
+      "name": "Alloy",
+      "ex_showroom_inr": 275000,
+      "inferred": true
+    },
+    {
+      "name": "Spoke tubeless",
+      "ex_showroom_inr": null
+    },
+    {
+      "name": "Spoke tubeless with graphics",
+      "ex_showroom_inr": 302000,
+      "inferred": true
+    }
+  ],
+  "specs": {
+    "engine": "501cc single-cylinder, air-cooled with oil-cooler",
+    "displacement_cc": 501
+  },
+  "features": [],
+  "colours": [],
+  "aliases": [
+    "cb500",
+    "cb 500",
+    "c b 500"
+  ],
+  "pitch": "Heritage roadster with a torquey 501cc single.",
+  "pitch_status": "draft - review before use",
+  "notes": [],
+  "sources": [
+    "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-unveils-10-product-made-in-india",
+    "https://www.autocarindia.com/bikes/honda-bikes"
+  ],
+  "unverified_fields": [],
+  "snapshot_date": "2026-10-14"
+}
