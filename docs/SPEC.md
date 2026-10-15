@@ -12,7 +12,7 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 
 | Metric | Target |
 |---|---|
-| Time to first agent audio after caller stops speaking (p50 / p90) | ≤ 1.2 s / ≤ 2.0 s |
+| Time to first agent audio after caller stops speaking (p50 / p90) | ≤ 2.0 s / ≤ 3.0 s (stretch: p50 ≤ 1.5 s) |
 | Model name correctly resolved from speech (30 recorded utterances: 10 Hindi/English, 5 each Tamil, Telugu, Malayalam, Kannada) | ≥ 90 % overall, ≥ 80 % per language |
 | Reply language matches the caller's language (§4.1) | ≥ 95 % of turns |
 | Scripted booking conversations completed end-to-end | ≥ 80 % |
@@ -20,11 +20,13 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 | Spoken prices that differ from catalog | 0 |
 | Agent turns over 2 sentences / ~40 words | ≤ 10 % |
 
+**Latency target revised (2026-10-15, end of Phase 1):** the original 1.2 / 2.0 s target assumed one fast English pipeline. Measured per-turn costs with six-language STT and a reasoning-capable LLM are: end-of-turn wait ~0.6 s (turn detector + endpointing), LLM time to first token ~0.8 s (`gpt-5.4-mini`; the faster `gpt-4.1-mini` spoke wrong prices), TTS first byte ~0.2 s, plus transport and playout, so a single-LLM-call turn lands at ~1.4–1.7 s. Console run 2 measured 1.95 / 2.69 s. The target is now ≤ 2.0 s p50 / ≤ 3.0 s p90, with p50 ≤ 1.5 s as the stretch goal for Phase 6.
+
 ## 2. Scope
 
-**In scope:** one showroom; the full current Honda India lineup (33 models) with variants; six languages (Hindi/Hinglish, English, Tamil, Telugu, Malayalam, Kannada) with the reply language following the caller (§4.1); price/spec/mileage Q&A; simple two-model comparison within Honda; test-ride booking and cancellation; callback lead capture as fallback; browser client with visualizer, transcript, and live bookings panel.
+**In scope:** one showroom; the full current Honda India lineup (33 models) with variants; six languages (Hindi/Hinglish, English, Tamil, Telugu, Malayalam, Kannada) with the reply language following the caller (§4.1); price/spec/mileage Q&A; whether the showroom is open on a given day/time; simple two-model comparison within Honda; test-ride booking and cancellation; callback lead capture as fallback; browser client with visualizer, transcript, and live bookings panel.
 
-**Out of scope (non-goals):** PSTN/SIP telephony, Indian languages beyond the six above, on-road price calculation, finance/EMI quotes, scraping the OEM website, multiple showrooms, an admin UI, and authentication beyond a shared demo passcode.
+**Out of scope (non-goals):** PSTN/SIP telephony, Indian languages beyond the six above, *calculating* on-road prices (published Delhi on-road prices are in scope, §6), finance/EMI quotes, scraping the OEM website, multiple showrooms, an admin UI, and authentication beyond a shared demo passcode.
 
 ## 3. Architecture
 
@@ -43,10 +45,10 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
    STT: Sarvam saaras:v4, codemix, language auto-detect → per-turn caller language (§4.1)
    LLM: one fast tool-calling model (chosen in Phase 1)
    Agents (handoff via tool call, no extra LLM hop per turn):
-     ├─ SalesAgent   — greeting, consent, catalog Q&A, comparisons, competitor pivot
+     ├─ SalesAgent   — greeting + language choice, catalog Q&A, showroom hours, comparisons, competitor pivot
      └─ BookingAgent — collects + confirms details, reserves slot, cancels
-   Decision layer (Phase 7): Jev — per-turn signals run in parallel (never delays audio);
-                             booking-confirmation gate is the only serial Jev call (§20)
+   Decision layer (Phase 7): Laya, self-hosted on the local GPU — per-turn signals run in parallel
+                             (never delays audio); the booking-confirmation gate is the only serial call (§20)
    tts_node override → streaming text transforms (§9)
    TTS: Sarvam bulbul:v4-flash, speaker "aarti_hi_customer" in all six languages,
         language_code set per turn from the session language; pronunciation dictionary
@@ -68,7 +70,7 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 |---|---|---|
 | STT | `saaras:v4`, `mode=STT_MODE` (`codemix`), `language="unknown"` (auto-detect) | `codemix` keeps English words and model names in Latin script. The detected language feeds the session-language rule (§4.1). Phase 1 confirms on the 30 recordings. |
 | VAD | Silero, default thresholds | Tune `min_silence_duration` only if eval shows clipping. |
-| Turn detection | `livekit.agents.inference.TurnDetector` (livekit-agents 1.8.8; the old `turn_detector.multilingual` plugin is deprecated) | Prevents cut-offs at mid-sentence pauses. `v1` runs on LiveKit Cloud and gets its language list from the server (check ta/te/ml/kn in step 6). It falls back to a local `v1-mini` model, which supports only `hi` and `en` of our six. For unsupported languages, end of turn comes from VAD silence. Phase 10 (self-hosted LiveKit) leaves only the local model. |
+| Turn detection | `livekit.agents.inference.TurnDetector` (livekit-agents 1.8.8; the old `turn_detector.multilingual` plugin is deprecated) | Prevents cut-offs at mid-sentence pauses. `v1` runs on LiveKit Cloud and **supports all six languages** (checked in step 6 with `supports_language`, 2026-10-15). If the cloud is unreachable it falls back to a local `v1-mini` model, which supports only `hi` and `en` of our six; other languages then end the turn on VAD silence. Phase 10 (self-hosted LiveKit) leaves only the local model. |
 | Interruptions | enabled; `min_interruption_duration` ≈ 0.5 s | Caller barge-in stops agent audio. |
 | LLM | Azure OpenAI deployment via `LLM_PROVIDER=azure` | Default: **`gpt-5.4-mini`** (or the newest *mini* tier available in your Azure region) with `reasoning_effort` at its lowest setting (`none`, or `minimal` on `gpt-5`/`gpt-5-mini`). Do **not** use full `gpt-5`/`gpt-5.4`/`gpt-5.5` or any `-pro` model in the live voice path; reasoning adds seconds of time-to-first-token. Phase 1 benchmarks the chosen mini model against one alternative (e.g. `gpt-5-mini` at `minimal`) on TTFT, tool-call accuracy and Hinglish quality. `max_tokens` ≈ 150 (reasoning tokens count against it). GPT-5-series models only accept `temperature=1`; don't set it. Deploy in the Azure region/deployment type closest to India that offers the model (check the Foundry catalog for Central/South India; Global Standard may route outside India). |
 | TTS | `bulbul:v4-flash`, `speaker=TTS_SPEAKER` (`aarti_hi_customer`), `language_code` = session language, set per turn | One voice for all six languages (tested 2026-10-15; language-specific voices were no better and `kavitha_te_conversation` garbled English words). Use `dict_id` (Sarvam pronunciation dictionary) for: Activa, Shine, SP125, Hornet, Unicorn, H'ness, CB350, Honda. |
@@ -78,14 +80,24 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 
 **Sarvam v4 (pre-Phase 1, 2026-10-15):** STT and TTS switch to `saaras:v4` and `bulbul:v4-flash` (configured by `STT_MODEL`, `TTS_MODEL` and `TTS_SPEAKER`). In a TTS→STT round-trip test on synthetic audio, `saaras:v4` + `codemix` kept English words and model names in Latin script and got the reference code exactly (`HND7K3Q9`), while `transcribe` mode wrote everything in Devanagari. Without `keyterms`, it misheard "Unicorn" as "Anicon" and "H'ness" as "HNS". With model-name `keyterms`, all names came out right, but "HND" in the reference code turned into "H'ness", so `keyterms` must not be active while a caller reads out a reference code (cancellation). `bulbul:v4-flash` time to first audio byte was 52–85 ms (`bulbul:v3`: 56–285 ms). v4-flash uses different voice names (`aarti_hi_customer`, `shubh_enhi_ads`, `ishita_enhi_customer`, …; `shubh` alone isn't valid). Voice chosen: `aarti_hi_customer`, which was the only tested voice whose "Unicorn" came back correct. Every voice mispronounced "H'ness", so it needs a pronunciation-dictionary entry, and the SDK parameter is `language_code` (sarvamai 0.1.37). Real callers' speech still needs the Phase 1 recordings.
 
-**Chosen values (fill in during Phase 1):** STT_MODE = `____`, LLM = `____`, measured p50 TTFA = `____`.
+**Console run 1 (2026-10-15, 9 turns, Tamil/English/Hindi):** time to first audio p50 **2.83 s**, p90 3.34 s (target 1.2 / 2.0 s). Components, p50: endpointing/EOU 0.82 s (4 of 9 turns hit **2.5 s**, i.e. the detector waited to its maximum), STT final transcript 0.74 s after speech end, LLM time to first token 0.88 s (0.53 s in the bare API test; the real prompt and tool schemas are larger), TTS first byte 0.20 s. Tool turns (two LLM calls) and single-call turns were close (2.92 vs 2.79 s), so the fixed per-turn costs dominate. One over-length reply (48 words), no guardrail violations. Latency tuning is the next Phase 1 task.
+
+**Step 6b latency changes (2026-10-15):** (1) Sarvam STT `high_vad_sensitivity=true`: its default end-of-speech needs ~0.58 s of silence (18 of 24 frames), the preset ~64 ms; LiveKit's turn detector still decides turn-taking. (2) Endpointing `min_delay` 0.3 s, `max_delay` 1.5 s (streaming-detector default 2.5 s; run 1 hit the cap on 4/9 turns). (3) `preemptive_tts=true` (LLM was already preemptive). (4) LLM warm-up call while the greeting plays: the first call of a session took 1–6 s cold. (5) **Model facts pre-fetched in code:** models named in the transcript (whole-word alias match) get their `find_bike` output added to the turn, so product questions need one LLM call instead of two; `find_bike` stays for misheard names, competitors and anything else. Text-mode check: product turns ~0.9–1.3 s total (was ~1.8–2.3 s), first-call TTFT p50 0.88 s; prompt ~1.3–2.8k tokens with 1.1–1.7k cached, so shrinking the prompt would gain little.
+
+**Console run 2 (after step 6b, 11 turns, Tamil/English):** time to first audio p50 **1.95 s**, p90 2.69 s (run 1: 2.83 / 3.34 s). STT final transcript p50 0.22 s (was 0.74 s); end-of-turn wait p50 0.58 s, but 3 of 10 turns hit the 1.5 s cap; LLM time to first token p50 0.85 s; TTS first byte 0.20 s. Single-LLM-call turns came in at 0.96–1.69 s. Run 2 also exposed a bug, fixed since: with preemptive TTS the reply could start before the language switch, so the language is now decided when the final transcript arrives.
+
+**Step 7 measurements (2026-10-15):**
+- **STT, 11 recorded clips (7 English, 4 Tamil):** with `codemix`, model names were resolved in 78 % of clips by exact alias match and 89 % with fuzzy matching (Tamil 3/3, English 5/6). With `transcribe`, 67 % (Tamil 0/3: it writes model names in Tamil script, e.g. "டியோ 125", "ஹைனஸ்"). Phone numbers were captured exactly in 2/2 clips in both modes. The only `codemix` miss was "CB350HINCE" (see Phase 2 notes in §6).
+- **LLM, text-mode check, 2 runs each:** `gpt-5.4-mini` passed 10/10 both times, first-call time to first token p50 0.73–0.81 s. `gpt-4.1-mini` was faster (p50 0.44–0.49 s) but failed 3 of 20 turns: a **wrong spoken price** (Telugu "6 lakh 6 thousand" for ₹65,600), a garbled Tamil number, the `[caller_language]` tag read aloud, and Telugu script inside a Malayalam reply. **Rejected:** prices are a hard rule.
+
+**Chosen values (Phase 1):** STT_MODE = `codemix` (`saaras:v4`, auto-detect), LLM = `gpt-5.4-mini` (`reasoning_effort=none`, Azure South India, async content filter), measured p50/p90 TTFA = **1.95 / 2.69 s** in console run 2. This meets the revised 2.0 / 3.0 s target (§1).
 
 ### 4.1 Language handling
 
 Six languages: `hi-IN` (Hinglish), `en-IN`, `ta-IN`, `te-IN`, `ml-IN`, `kn-IN` (`SUPPORTED_LANGUAGES`). **Code decides the reply language; the LLM never guesses it** (same principle as rule 12). Measured 2026-10-15: when the prompt only said "reply in the caller's language", Tamil, Telugu and Malayalam callers got Hinglish replies. With the language passed explicitly, the replies matched (Telugu came back in Roman script once; see risks).
 
 - **Detection:** STT runs with `language="unknown"`. Each final transcript carries a detected language (probability 1.0 on every test clip).
-- **Session language (`domain/language.py`, pure, unit-tested):** starts as `GREETING_LANGUAGE` (`ta-IN`). It switches to the detected language when a final transcript has ≥ 3 words or a detection probability ≥ 0.9, so one-word answers like "ok", "haan" or "yes" don't flip it. An explicit request ("English mein bolo", "Tamil la pesunga") always switches.
+- **Session language (`domain/language.py`, pure, unit-tested):** starts as `GREETING_LANGUAGE` (`ta-IN`). It switches to the detected language only when a final transcript has ≥ 3 words **and** the detection probability is ≥ 0.6 (or not reported), so one-word answers like "ok", "haan" or "yes" don't flip it. (Changed in step 5 from "words **or** probability ≥ 0.9": Sarvam reported probability 1.0 on every clip, including one-word ones, so probability alone can't protect short answers.) An explicit request ("English mein bolo", "Tamil la pesunga", "తెలుగులో"), or a bare language name such as an answer to the greeting's question, always switches. If more than one language is named, nothing changes. A script check (`script_mismatch`) logs replies in the wrong script, e.g. Telugu in Roman letters, as guardrail violations.
 - **LLM:** each turn's instructions include `[caller_language] <name>` plus the script rule: Hindi = Roman-script Hinglish; English = English; Tamil, Telugu, Malayalam, Kannada = native script, with brand/model names and words like *test ride*, *ex-showroom* kept in English.
 - **TTS:** `language_code` = session language, updated before each reply.
 - **Tools:** `spoken_price` and spoken slot times are rendered in the session language by `domain/` formatters (§9, §10); the LLM repeats them verbatim.
@@ -129,104 +141,29 @@ if __name__ == "__main__":
 
 Migrations in `data/migrations/`. Every table has RLS enabled with **no anon policies**. The backend connects as the `postgres` role through the pooler (which bypasses RLS); the browser never queries the DB directly.
 
-### `001_init.sql`
+### `001_init.sql` (applied to the Supabase project on 2026-10-15)
 
-```sql
-create extension if not exists pg_trgm;
+The file `data/migrations/001_init.sql` is the source of truth; this is a summary. Apply with `uv run python scripts/apply_migrations.py` (asyncpg, no psql needed); applied files are recorded in `public.schema_migrations`, and a changed file is refused.
 
-create table public.showrooms (
-  id            text primary key,                 -- 'demo-showroom'
-  name          text not null,
-  city          text not null,                    -- reference city for ex-showroom prices
-  open_time     time not null default '10:00',
-  close_time    time not null default '19:00',
-  closed_dow    int[] not null default '{}',      -- ISO weekday numbers, e.g. '{7}' for Sunday
-  slot_minutes  int  not null default 30,
-  tz            text not null default 'Asia/Kolkata'
-);
+| Table | Purpose and notable columns |
+|---|---|
+| `showrooms` | Open/close times, `closed_isodow`, `slot_minutes`, `tz` (feeds `check_showroom_open`) |
+| `bikes` | `segment` ∈ the catalog's **17 segment values** (replaces the 5-value `category`), `division`, `fuel`, `status`; `engine_cc` **optional** (required for petrol), `range_km` for EVs; `mileage_kmpl` + `mileage_basis`; `specs` jsonb, `features`, `colours`, `unverified_fields`; ex-showroom `price_min_inr`/`price_max_inr` with `price_available`, city, date, precision, source |
+| `bike_variants` | `ex_showroom_inr` nullable, `inferred`; no stored spoken price (§9) |
+| `bike_on_road_prices` | On-road prices **as published**, per the source's own variant labels: `on_road_inr`, breakdown `ex_showroom_basis_inr` + `rto_inr` + `insurance_inr` (all or none) + `other_charges` jsonb (TCS 1 %, PM E-Drive subsidy…), `city`, `source`, `as_of`, `needs_review` |
+| `bike_aliases` | Any-script aliases, trigram index |
+| `slots` | Capacity/booked with `booked ≤ capacity` |
+| `bookings` | Phone check, `status`, `language`, calendar sync columns; one active booking per phone per slot; **no consent column** |
+| `leads` | Optional name/phone, `reason`, `language` |
 
-create table public.bikes (
-  id              text primary key,               -- 'activa-110'
-  name            text not null,                  -- 'Honda Activa 110'
-  category        text not null check (category in ('scooter','commuter','premium-commuter','mid','premium')),
-  engine_cc       numeric(5,1) not null,
-  mileage_kmpl    numeric(4,1),                   -- claimed/typical, note source in specs
-  specs           jsonb not null default '{}',    -- brakes, tyres, fuel tank, kerb weight, features
-  pitch           text not null,                  -- 1–2 sentence USP the agent may paraphrase
-  price_as_of     date not null,
-  price_source    text not null                   -- URL or 'Honda price list, <city>'
-);
-
-create table public.bike_variants (
-  id               text primary key,              -- 'activa-110-std'
-  bike_id          text not null references public.bikes(id) on delete restrict,
-  variant_name     text not null,                 -- 'STD', 'DLX', 'H-Smart'
-  ex_showroom_inr  integer not null check (ex_showroom_inr > 0)
-  -- no stored spoken_price: tools render it per call in the session language (§9)
-);
-
-create table public.bike_aliases (
-  alias   text primary key,                       -- lower-cased, any script: 'activa', 'aktiva', 'ऐक्टिवा', 'ஆக்டிவா', 'యాక్టివా'
-  bike_id text not null references public.bikes(id) on delete cascade
-);
-create index bike_aliases_trgm on public.bike_aliases using gin (alias gin_trgm_ops);
-
-create table public.slots (
-  id           bigserial primary key,
-  showroom_id  text not null references public.showrooms(id),
-  bike_id      text not null references public.bikes(id),
-  starts_at    timestamptz not null,
-  capacity     int not null default 1 check (capacity >= 0),   -- demo units available
-  booked       int not null default 0 check (booked >= 0),
-  unique (showroom_id, bike_id, starts_at),
-  check (booked <= capacity)
-);
-create index slots_lookup on public.slots (showroom_id, bike_id, starts_at);
-
-create table public.bookings (
-  id                    bigserial primary key,
-  reference             text unique not null,          -- 'HND-7K3Q9'
-  slot_id               bigint not null references public.slots(id),
-  customer_name         text not null,
-  customer_phone        text not null check (customer_phone ~ '^[6-9][0-9]{9}$'),
-  status                text not null default 'CONFIRMED' check (status in ('CONFIRMED','CANCELLED')),
-  calendar_event_id     text,
-  calendar_sync_status  text not null default 'PENDING' check (calendar_sync_status in ('PENDING','SYNCED','FAILED')),
-  calendar_sync_error   text,
-  consent_given         boolean not null,
-  language              text not null default 'hi-IN', -- session language at booking (§4.1)
-  room_name             text,                          -- LiveKit room, for tracing
-  created_at            timestamptz not null default now()
-);
-create unique index one_active_booking_per_phone_slot
-  on public.bookings (slot_id, customer_phone) where status = 'CONFIRMED';
-
-create table public.leads (                            -- fallback when booking can't complete
-  id             bigserial primary key,
-  customer_name  text,
-  customer_phone text check (customer_phone is null or customer_phone ~ '^[6-9][0-9]{9}$'),
-  interest       text,                                 -- bike_id or free text
-  reason         text not null,                        -- 'no_slot', 'caller_requested', 'error'
-  consent_given  boolean not null,
-  language       text not null default 'hi-IN',        -- callback in the caller's language
-  created_at     timestamptz not null default now()
-);
-
-alter table public.showrooms     enable row level security;
-alter table public.bikes         enable row level security;
-alter table public.bike_variants enable row level security;
-alter table public.bike_aliases  enable row level security;
-alter table public.slots         enable row level security;
-alter table public.bookings      enable row level security;
-alter table public.leads         enable row level security;
-```
+Every table has RLS enabled with no anon policies. `tests/integration/test_schema.py` checks the tables, RLS, the `anon` role, and each constraint (each test rolls back).
 
 ### `002_booking_functions.sql`
 
 ```sql
 create or replace function public.reserve_slot(
   p_slot_id bigint, p_name text, p_phone text, p_reference text,
-  p_consent boolean, p_room text, p_language text
+  p_room text, p_language text
 ) returns bigint
 language plpgsql as $$
 declare v_id bigint;
@@ -238,8 +175,8 @@ begin
     raise exception 'SLOT_UNAVAILABLE' using errcode = 'P0001';
   end if;
 
-  insert into public.bookings (reference, slot_id, customer_name, customer_phone, consent_given, room_name, language)
-  values (p_reference, p_slot_id, p_name, p_phone, p_consent, p_room, p_language)
+  insert into public.bookings (reference, slot_id, customer_name, customer_phone, room_name, language)
+  values (p_reference, p_slot_id, p_name, p_phone, p_room, p_language)
   returning id into v_id;
   return v_id;
 end $$;
@@ -279,6 +216,25 @@ Both functions run in a single transaction, so the capacity check and the insert
 
 Schema change: `bike_variants.ex_showroom_inr` becomes nullable (there is no `spoken_price` column), and `bikes` gains `status`, `price_available boolean`, `price_min_inr`, `price_max_inr`.
 
+**Corrections (2026-10-15, product owner):** Activa e: Standard is ₹1,18,000 ex-showroom (was ₹1,17,000 launch price), changed in `scripts/build_catalog.py` and regenerated.
+
+**Seeding (step 9):** `uv run python scripts/seed_catalog.py` (`--dry-run` validates and reports only) runs `honda_voice.db.catalog_seed`: pydantic validation of every model, then one transaction that upserts `bikes` and replaces their variants, aliases and on-road rows, so re-running converges on the catalog exactly (an integration test checks a data fingerprint is unchanged by a re-seed). It reads three auxiliary files next to the model files:
+- `_price_overrides.json`: product-owner price decisions applied on top of the generated catalog (`scripts/build_catalog.py` is kept read-only). Currently Unicorn, SP160, NX200.
+- `_stt_aliases.json`: spellings STT actually produced (e.g. `hiness`, `hince`, `cb350hince`, `anicon`); extend from new recordings.
+- `_on_road_delhi.json`: below.
+The seed fails if two models claim the same alias, and prints a data-quality report (inferred variant prices, unverified fields, non-on-sale models, overrides, on-road rows needing review). Seeded on 2026-10-15: 1 showroom, 33 bikes, 57 variants, 173 aliases, 54 on-road prices.
+
+**On-road prices (Delhi), `data/catalog/_on_road_delhi.json`:** 54 entries for 32 models, collected on 2026-10-15 from BikeWale's Delhi price pages: only figures shown on the page, no derived values. BikeWale gives the full breakdown (its ex-showroom figure + RTO + insurance + other charges such as TCS 1 % or the PM E-Drive subsidy) for the base variant, and only the total for other variants; every breakdown adds up to its total. Notes:
+- BikeWale's ex-showroom figures differ slightly from the catalog's (e.g. Shine 100 ₹65,642 vs ₹65,640; Activa e: ₹1,20,133 vs ₹1,18,000), so they are stored as the *basis of the on-road figure*, not as catalog prices.
+- BikeWale merges the CB350 H'ness into its CB350 listing; the H'ness row reuses it and carries `needs_review`.
+- QC3 lists a "Delhi State Subsidy" of +₹30,000 *added* to the total; flagged `needs_review`.
+- Unicorn, SP160 and NX200 had no catalog ex-showroom price; BikeWale's (₹1,15,832 / ₹1,18,060 Single Disc / ₹1,61,296) were adopted by the product owner on 2026-10-15.
+- Rebel 500 (upcoming) has no on-road price.
+
+**Phase 2 alias and matching notes (from step 7):** add the misspellings STT actually produced: `hiness`, `hince`, `cb350hince`, `cb350 hiness`, `highness` (and keep collecting them from logs). Matching must use **longest match wins**: "Activa 125" also hits the bare alias `activa` (Activa 110) and "Shine 100" hits Shine 125's `shine`, so a shorter alias contained in a longer matched alias is dropped. Keep the fuzzy/trigram threshold tight: at 0.8 similarity, "CB350 Hiness" also matched CB350C, CB500 and CB750; ambiguous fuzzy results go back to the caller as "which one?".
+
+**Step 10 (2026-10-15): the agent reads the database.** The worker loads the whole catalog (~0.4 s) into a `Catalog` snapshot in the background while the greeting plays, so alias matching, pre-fetching, `list_bikes` and `compare_bikes` cost no database round trip mid-turn; only the trigram fallback queries Postgres (~85 ms from India). Catalog changes take effect on the next call. Results on the step 7 recordings with the live lookup (`codemix`): every expected model found in 9/9 clips (100 %); exactly the expected set in 8/9 (89 %), the difference being a clip where the caller also said "CB350" as the family name. Text-mode check: 15/15, including on-road, list, compare, a Tamil on-road breakdown and a bare "activa" (agent asks which Activa).
+
 **Aliases in every script:** each model gets aliases in Latin script plus Devanagari, Tamil, Telugu, Malayalam and Kannada spellings (e.g. `ஆக்டிவா`, `యాక్టివా`, `ആക്ടിവ`, `ಆಕ್ಟಿವಾ`), because `codemix` usually but not always keeps model names in Latin script. Phase 1 recordings add the misspellings STT actually produces.
 
 ## 7. Tools
@@ -289,9 +245,10 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 
 | Tool | Args | Behavior |
 |---|---|---|
-| `find_bike` | `query: str` | Exact alias match → trigram similarity (≥ 0.4) → none. Returns `{bike_id, name, category, engine_cc, mileage_kmpl, pitch, variants:[{variant_name, spoken_price}], price_note}`. `price_note` = "ex-showroom {city}, {price_as_of}". If ambiguous, returns up to 3 candidates so the agent can ask which one. |
-| `list_bikes` | `category?: str, max_price_inr?: int` | Up to 4 matches, cheapest first, with `spoken_price` of the base variant. |
-| `compare_bikes` | `a: str, b: str` | Both must be Honda. Returns side-by-side key fields only. |
+| `find_bike` | `query: str` | `db/catalog.py` (step 10). **Alias match, longest wins** (`domain/alias_match.py`: "Activa 125" doesn't also hit Activa 110's bare "activa"); if an alias covers only part of the query, a clearly better **trigram** match wins ("cb350 hinees" → H'ness); otherwise trigram fallback (similarity ≥ 0.4, top must beat the runner-up by 0.1, else up to 3 candidates to ask "which one?"). A bare family name ("activa", "hornet") also returns `similar_models` so the agent asks which one. Returns `domain/catalog_view.bike_summary()`: `{found, bike_id, name, segment, status, engine_cc, mileage_kmpl, specs{every verified spec}, features?, colours?, pitch, price_available, price_min_spoken, price_max_spoken?, price_note, variants:[{variant_name, spoken_price\|null}], on_road{available, city, from_spoken, cheapest_variant, variants[], breakdown{ex_showroom, rto, insurance, other[] (deductions marked)}, note}, similar_models?, booking_note?}`. Rows flagged `needs_review` never appear. When nothing matches, the note tells the agent to pivot to the closest Honda model if the caller named a competitor. |
+| `check_showroom_open` | `day_ref, time_24h?` | `day_ref` ∈ `today, tomorrow, day_after, mon…sun, YYYY-MM-DD`. Resolved in code (`datetime_resolve.showroom_status`, rule 5) against the showroom's open/close times and closed weekdays. Returns `{date, weekday, is_today, open_that_day, opens, closes, open_now?, time_asked?, open_at_time_asked?, note?}`; the LLM says the times naturally in the session language. |
+| `list_bikes` | `segment?: str, max_price_inr?: int` | Up to 4 models, cheapest first (one of the 17 segments; budget as a plain rupee number), each with `ex_showroom_from_spoken` and `on_road_from_spoken`. |
+| `compare_bikes` | `a: str, b: str` | Both resolved like `find_bike` (Honda only; unresolved → ask which). Returns key fields side by side: segment, engine, mileage, ex-showroom range, on-road from, and verified key specs. |
 | `start_booking` | `bike_id?: str` | Hands off to `BookingAgent` with chat context. |
 | `capture_lead` | `name?, phone?, interest?, reason` | Fallback path; writes to `leads`. |
 
@@ -301,19 +258,24 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 |---|---|---|
 | `check_slots` | `bike_id, day_ref, time_24h?` | `day_ref` ∈ `today, tomorrow, day_after, mon…sun, YYYY-MM-DD`. Resolves via `datetime_resolve` (§10). Returns up to 3 nearest open slots as spoken strings in the session language ("kal shaam 5 baje", "நாளை மாலை 5 மணி"). |
 | `validate_phone` | `digits: str` | Normalizes (strips +91/0/spaces), validates `^[6-9]\d{9}$`, returns `readback` grouped 5+5. |
-| `book_test_ride` | `slot_id, name, phone, caller_confirmed: bool` | Rejects if `caller_confirmed` is false. When `JEV_MODE=enforce`, also requires the Jev confirmation gate to pass (§20.3). Calls `reserve_slot` (with the session language). On success, schedules the calendar mirror task and returns `{reference_spoken}` (spelled with gaps: "H N D, 7 K 3 Q 9"). On `SLOT_UNAVAILABLE`, returns the next 2 open slots. |
+| `book_test_ride` | `slot_id, name, phone, caller_confirmed: bool` | Rejects if `caller_confirmed` is false. When `DECISION_MODE=enforce`, also requires the decision-model confirmation gate to pass (§20.3). Calls `reserve_slot` (with the session language). On success, schedules the calendar mirror task and returns `{reference_spoken}` (spelled with gaps: "H N D, 7 K 3 Q 9"). On `SLOT_UNAVAILABLE`, returns the next 2 open slots. |
 | `cancel_test_ride` | `reference, phone` | Calls `cancel_booking`. |
 | `back_to_sales` | — | Hands back to `SalesAgent`. |
 
 ## 8. Conversation design (`agent/prompts.py`)
 
-**Persona:** a friendly, concise showroom executive. The voice is female (`aarti_hi_customer`), so first-person Hindi verbs use feminine forms ("kar sakti hoon", "confirm kar rahi hoon"); if `TTS_SPEAKER` changes to a male voice, switch the forms in `prompts.py` too. Reply in the session language given each turn (§4.1), never by guessing: Hindi as Roman-script Hinglish; Tamil, Telugu, Malayalam and Kannada in native script; brand/model names and words like *test ride* and *ex-showroom* in English. Feminine first-person forms apply in every language that marks gender on verbs. `prompts.py` holds the per-language fixed lines (greeting, consent, re-confirm, competitor pivot, out-of-scope deflection).
+**Persona:** a friendly, concise showroom executive. The voice is female (`aarti_hi_customer`), so first-person Hindi verbs use feminine forms ("kar sakti hoon", "confirm kar rahi hoon"); if `TTS_SPEAKER` changes to a male voice, switch the forms in `prompts.py` too. Reply in the session language given each turn (§4.1), never by guessing: Hindi as Roman-script Hinglish; Tamil, Telugu, Malayalam and Kannada in native script; brand/model names and words like *test ride* and *ex-showroom* in English. Feminine first-person forms apply in every language that marks gender on verbs. `prompts.py` holds the per-language fixed lines (greeting, intro, re-confirm, competitor pivot, out-of-scope deflection).
 
-**Greeting (Tanglish, with consent and language choice):** "வணக்கம்! Honda showroom-க்கு welcome. இந்த call quality-க்காக record ஆகலாம், continue பண்ணலாமா? Tamil, English, Hindi, Telugu, Kannada, Malayalam, எந்த language-ல பேசலாம்?" It is stored in Tamil script with English words, because TTS reads that natively; Roman-script Tanglish also round-tripped correctly. The caller's first reply sets the session language (§4.1) and answers consent. If they answer only the language question, the agent asks for consent once more in that language. A booking cannot be made without `consent_given = true`. The greeting is ~12 s long; trim it after the Phase 1 listening test.
+**Opening (changed 2026-10-15 after the first console test, at the product owner's request: no recording-consent question anywhere):**
+1. **Greeting (Tanglish, fixed text, no LLM wait):** "வணக்கம்! Honda showroom-க்கு welcome. Tamil, English, Hindi, Telugu, Kannada, Malayalam, எந்த language-ல பேசலாம்?" It is stored in Tamil script with English words, because TTS reads that natively.
+2. **The caller's first reply sets the session language** (§4.1).
+3. **Intro, in that language, on the first caller turn only:** what the agent can do (answer questions about Honda bikes and scooters, book a test ride, check whether the showroom is open at a given time), then an open question such as "What would you like to know?". If the caller's first reply already contains a question, the agent answers it instead of the intro. The code decides when the intro line is offered, not the LLM.
+
+**Answer only what was asked:** one or two facts per turn. The agent doesn't recite specs, features or the pitch unprompted; for a general "tell me about X" it gives one or two highlights and asks what the caller wants to know. `find_bike` returns every verified spec, plus features and colours, so specific questions (ground clearance, kerb weight, brakes, tyres…) can be answered.
 
 **Brevity:** at most 2 short sentences per turn, and end with a question that moves the call forward. This is enforced through the prompt and `max_tokens`. Over-length turns are **logged, not truncated**.
 
-**Prices:** speak only the `spoken_price` from tool output, always with "ex-showroom". If asked for on-road price, say it varies by city and RTO charges and offer a callback from the showroom.
+**Prices:** speak only spoken prices from tool output, always saying which kind: "ex-showroom" or "on-road (Delhi)". On-road prices and their breakdown (RTO, insurance, other charges) come from `bike_on_road_prices` and are worded by `format_inr_spoken` like any other price; say they are for Delhi and vary by city, and offer the showroom's exact quote. Rows with `needs_review` are never spoken.
 
 **Unknown facts:** if a tool doesn't return the answer, say so and offer a callback. Never guess specs.
 
@@ -342,7 +304,8 @@ Applied in an overridden `tts_node` as **streaming** transforms (chunk-in, chunk
 - `hi-IN`: "74 hazaar 6 sau rupaye", "1 lakh 45 hazaar rupaye", "2 lakh rupaye" (exact thousands/lakhs drop the smaller units).
 - `en-IN`: "74,600 rupees", "1 lakh 45 thousand rupees".
 - `ta-IN`, `te-IN`, `ml-IN`, `kn-IN`: Indian-grouped numerals plus the native rupee word: "80,600 ரூபாய்" / "80,600 రూపాయలు" / "80,600 രൂപ" / "80,600 ರೂಪಾಯಿ". Bulbul read these numerals as correct native number words in the 2026-10-15 test.
-- Digits stay as numerals in Hindi too. **Phase 1 checks** pronunciation in each language; any fix goes inside this function only.
+- Digits stay as numerals in Hindi too. Any pronunciation fix goes inside this function only.
+- **Verified 2026-10-15 (step 3):** ₹65,640, ₹1,51,600 and ₹42,82,000 were formatted and spoken by `aarti_hi_customer` (`bulbul:v4-flash`), then transcribed back with `saaras:v4`, in all six languages. All 18 came back as the right amount in native number words, with the "approximately" word intact. Indian digit grouping (`1,52,000`) is what makes TTS say "lakh" in each language. A human listening check is still part of Phase 1.
 
 ## 10. Date, time, and phone handling (`domain/`)
 
@@ -403,16 +366,13 @@ AZURE_OPENAI_API_VERSION=2024-12-01-preview   # verified 2026-10-15; async filte
 OPENAI_API_KEY=
 GROQ_API_KEY=
 
-# Decision layer (Phase 7) — provider: jev | laya | llm_fallback
-DECISION_PROVIDER=jev
-# mode: off | shadow | enforce (JEV_MODE kept as the name for compatibility)
-JEV_MODE=off
-JEV_API_KEY=<key>                # TypeSafe AI direct, or route via OpenRouter
-JEV_MODEL=<pinned-version>       # pin an exact version, e.g. the one verified in Phase 7
-JEV_TIMEOUT_MS=600
-LAYA_API_KEY=<key>               # Vercel AI Gateway or Convai Innovations direct (§23)
-LAYA_BASE_URL=<gateway or vendor endpoint>
-LAYA_MODEL=convaiinnovations/laya   # pin; '-free' ID stops serving after 2026-10-31
+# Decision layer (Phase 7) — Laya, self-hosted (services/laya/run.sh, §23); fallback: LLM structured output
+DECISION_PROVIDER=laya           # laya | llm_fallback
+DECISION_MODE=off                # off | shadow | enforce
+DECISION_TIMEOUT_MS=600
+LAYA_BASE_URL=http://127.0.0.1:8100   # local laya-serve, Jev-compatible POST /v1/systemone
+LAYA_MODEL=multilingual          # Laya checkpoint for Indic/code-mixed turns: multilingual | english
+LAYA_API_KEY=                    # only if laya-serve is started with LAYA_API_KEY
 
 # Optional API service (§22) — when enabled, the frontend calls it instead of the DB
 API_BASE_URL=                    # e.g. http://localhost:8000; empty = Next.js routes read the DB
@@ -420,7 +380,7 @@ API_SERVICE_TOKEN=<shared secret between Next.js server and FastAPI>
 
 # LangGraph (Phase 8) — native | langgraph
 ORCHESTRATOR=native
-LG_ROUTER=jev                    # jev | rules | llm
+LG_ROUTER=decision               # decision | rules | llm
 
 # Supabase session pooler (IPv4): Project Settings → Database → Connection string → Session pooler.
 # Phase 11 switches to local Postgres (§24).
@@ -455,7 +415,8 @@ Ordered to remove the biggest risk (voice quality and latency) first.
 *Exit:* `uv run pytest` passes on an empty suite, and no secrets are in git history.
 
 **Phase 1 — Voice spike (console mode).** Run the worker with an in-memory `find_bike` over 3 hardcoded models, with language detection and per-turn reply language (§4.1). Record 30 utterances mentioning model names (10 Hindi/English, 5 each Tamil, Telugu, Malayalam, Kannada) and compare STT modes. Benchmark LLM candidates. Check how Bulbul pronounces prices, model names, and phone numbers in each language.
-*Exit:* STT mode, LLM, and the price-speech format are recorded in §4/§9; p50 TTFA ≤ 1.2 s in console; per-turn metrics are logged; a console call that switches language mid-call gets replies in the new language.
+**Interim (2026-10-15):** only English and Tamil speakers are available, so the first recording set is 10 clips (5 English, 5 Tamil); Hindi, Telugu, Malayalam and Kannada clips are added when speakers are available, and the per-language ≥ 80 % target applies only to recorded languages until then.
+*Exit:* STT mode, LLM, and the price-speech format are recorded in §4/§9; p50 / p90 TTFA ≤ 2.0 / 3.0 s in console (revised, §1); per-turn metrics are logged; a console call that switches language mid-call gets replies in the new language.
 
 **Phase 2 — Catalog in Supabase.** Migrations 001, load `data/catalog/*.json` (33 models), the seed script, aliases fed by the Phase 1 recordings, `find_bike`/`list_bikes`/`compare_bikes` against the DB.
 *Exit:* model-name resolution ≥ 90 % on the recorded set; catalog unit and integration tests pass.
@@ -472,11 +433,11 @@ Ordered to remove the biggest risk (voice quality and latency) first.
 **Phase 6 — Evals and hardening.** The full eval suite, a latency report, and a demo script.
 *Exit:* all §1 targets met; README with setup steps.
 
-**Phase 7 — Jev decision layer (§20).** `DecisionModel` interface + Jev client; migration 003; parallel per-turn signals; confirmation gate. Run in `shadow` mode across the full eval suite and demo calls, then switch to `enforce` only for gates that clear their targets.
+**Phase 7 — Decision layer, self-hosted Laya (§20, §23).** `DecisionModel` interface + Laya client (local `laya-serve`) + LLM fallback; migration 003; parallel per-turn signals; confirmation gate. Run in `shadow` mode across the full eval suite and demo calls, then switch to `enforce` only for gates that clear their targets.
 *Exit:* §20.5 targets met on the labelled set; p50 TTFA unchanged (±50 ms) vs Phase 6 on non-confirmation turns.
 
 **Phase 8 — LangGraph orchestration, A/B (§21).** Build the graph behind `ORCHESTRATOR=langgraph` without removing the native path. Run the latency A/B across three router configs.
-*Exit:* latency report comparing configs in §21.3; decision recorded here (adopt / adopt with Jev router / stay native) with reasons.
+*Exit:* latency report comparing configs in §21.3; decision recorded here (adopt / adopt with decision-model router / stay native) with reasons.
 
 **Phase 9 — Optional FastAPI service (§22).** Only if a trigger in §22.1 applies.
 *Exit:* frontend works with `API_BASE_URL` set and with it empty; Next.js no longer holds `DATABASE_URL` when the API is enabled; API tests pass.
@@ -487,14 +448,14 @@ Ordered to remove the biggest risk (voice quality and latency) first.
 **Phase 11 — Local Postgres (§24).** Replace hosted Supabase with `postgres:16` in Docker, migrations applied on first start, catalog re-seeded. Only `DATABASE_URL` changes.
 *Exit:* all integration tests and evals pass against local Postgres; data export/import path from Supabase documented.
 
-Laya (§23) is not a separate phase: it is added in Phase 7 as a second `DecisionModel` provider and compared in the same labelled eval.
+Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya, which is open source and runs on the local GPU (§23). Laya is part of Phase 7, not a separate phase.
 
 ## 15. Testing and evals
 
 **Unit tests (`tests/`, no network):**
 - `test_pricing.py`: rounding, lakh/hazaar boundaries, the "approximately" prefix, each of the six languages.
 - `test_language.py`: session-language rule (short answers don't switch, ≥ 3-word or high-probability turns do, explicit requests do).
-- `test_datetime_resolve.py`: today/tomorrow/weekday across week boundaries, past times, closed days, snapping, IST at midnight, `speak_slot` in each language.
+- `test_datetime_resolve.py`: today/tomorrow/weekday across week boundaries, past dates, closed days, opening-hour boundaries, IST vs UTC, `showroom_status`; later snapping and `speak_slot` in each language.
 - `test_phone.py`: +91, leading 0, spaces, native-script digits, invalid first digit, wrong length.
 - `test_text_transforms.py`: markdown stripping, ₹ backstop, chunk boundaries in streaming.
 - `test_catalog_lookup.py`: alias exact match, trigram fallback, ambiguous results.
@@ -516,7 +477,7 @@ Laya (§23) is not a separate phase: it is added in Phase 7 as a second `Decisio
 
 ## 17. Privacy
 
-- Spoken consent at the greeting is stored on each booking or lead.
+- There is no spoken recording-consent step (removed 2026-10-15 at the product owner's request), and agent sessions are not recorded (`record=False`). **Open item:** name and phone are still personal data under India's DPDP Act, so show a short privacy notice in the frontend before a call starts, and in the README.
 - Collect only name, phone, and preferred slot. Mask phone numbers in logs and the UI.
 - If recordings are enabled, store them for at most 30 days in the POC and document this in the README. (India's DPDP Act applies to the personal data collected.)
 
@@ -531,6 +492,7 @@ honda-voice-poc/
 ├── .env.example
 ├── docker-compose.yml          # Phase 10/11 only: local LiveKit + Postgres (§24)
 ├── .gitignore
+├── services/laya/run.sh        # starts the local Laya decision server (§23)
 ├── data/
 │   ├── catalog/                # one JSON per model + _index.json
 │   └── migrations/
@@ -538,7 +500,8 @@ honda-voice-poc/
 │       └── 002_booking_functions.sql
 ├── scripts/
 │   ├── build_catalog.py        # regenerates data/catalog/
-│   ├── seed_catalog.py
+│   ├── apply_migrations.py     # applies data/migrations in order, records them
+│   ├── seed_catalog.py         # validate + upsert the catalog (wraps db/catalog_seed.py)
 │   ├── generate_slots.py
 │   ├── retry_calendar_sync.py
 │   └── latency_report.py
@@ -548,6 +511,7 @@ honda-voice-poc/
 │   ├── db/
 │   │   ├── pool.py               # asyncpg pool (session pooler)
 │   │   ├── catalog.py            # find/list/compare queries
+│   │   ├── catalog_seed.py       # catalog JSON → validated rows → transactional upsert
 │   │   └── bookings.py           # reserve/cancel/lead/slot queries
 │   ├── domain/
 │   │   ├── pricing.py            # format_inr_spoken(amount, lang)
@@ -558,13 +522,12 @@ honda-voice-poc/
 │   │   └── gcalendar.py          # create/delete event, retry
 │   ├── decisions/                # Phase 7
 │   │   ├── base.py               # DecisionModel protocol (choice / score / probability)
-│   │   ├── jev_client.py         # Jev implementation, timeout + version pin
-│   │   ├── laya_client.py        # Laya implementation (§23)
+│   │   ├── laya_client.py        # Laya (local laya-serve) implementation, timeout (§23)
 │   │   ├── llm_fallback.py       # same interface via LLM structured output (baseline)
 │   │   └── questions.py          # typed question definitions (§20.2)
 │   ├── graph/                    # Phase 8
 │   │   ├── state.py
-│   │   ├── router.py             # jev | rules | llm
+│   │   ├── router.py             # decision | rules | llm
 │   │   └── build.py              # compiled graph + LiveKit adapter wiring
 │   ├── api/                      # optional FastAPI service (§22, Phase 9)
 │   │   ├── main.py
@@ -599,31 +562,31 @@ honda-voice-poc/
 | Bulbul pronunciation of numbers and codes | Unclear prices or reference codes | Phase 1 listening test; pronunciation dictionary |
 | Package versions (`livekit-agents`, Sarvam plugin) | API drift from snippets | Verify against docs; pin in pyproject |
 | Catalog freshness | Wrong prices in demo | `price_as_of` spoken via "ex-showroom" note; re-seed before demo |
-| Jev accuracy on code-mixed Hinglish transcripts | Wrong routing or gate decisions | Shadow mode + labelled set before enforce (§20.5) |
-| Jev is a new product (released Sept 2026) | API changes, availability | Version pin; `DecisionModel` interface with LLM fallback; gate fails safe to re-confirmation |
+| Laya accuracy on code-mixed Indic transcripts (Tamil, Telugu, Kannada, Malayalam aren't benchmarked in its README) | Wrong routing or gate decisions | Shadow mode + per-language labelled set before enforce (§20.5); `llm_fallback` per question |
+| Laya is young (0.4.x, frequent releases) | API or behaviour changes | Pin `laya==0.4.7`; `DecisionModel` interface with LLM fallback; gate fails safe to re-confirmation |
 | LangGraph adds per-turn latency | Slower agent | Phase 8 A/B; non-LLM router; no buffering nodes |
-| Laya pricing/latency after the free period | Cost or slower gate | Shadow-compare with Jev before Oct 31; keep provider switchable |
+| Laya needs the local machine's GPU | Slower or unavailable gate on other machines | CPU fallback (~0.2–0.5 s per call per README); timeout + fail-safe; provider switchable to `llm_fallback` |
 | A second backend service (FastAPI) | More to deploy and keep in sync | Optional; shared `db/` + `domain/` modules; only behind §22.1 triggers |
 
 ---
 
-## 20. Jev decision layer (Phase 7)
+## 20. Decision layer (Phase 7, Laya)
 
-Jev (TypeSafe AI) is a non-generative "System One" model: given a context and typed questions, it returns a **choice** from fixed options, a **score** on a rubric, or a **probability** that a statement is true, each with a confidence value. It cannot produce free text, so it complements the LLM rather than replacing it. **Use Jev for judgments, code for rules, and the LLM for replies.**
+Laya (Convai Innovations, Apache-2.0) is a non-generative "System One" model: given a context and typed questions, it returns a **choice** from fixed options, a **score** on a rubric, or a **probability** that a statement is true, each with a confidence value. It cannot produce free text, so it complements the LLM rather than replacing it. **Use Laya for judgments, code for rules, and the LLM for replies.**
 
-Verify the current API shape, limits, and model version at docs.typesafe.ai before building, and pin the version in `JEV_MODEL`.
+It runs self-hosted (§23): `laya==0.4.7`, checkpoints `laya-multilingual` (mmBERT-base, 322 M params) and `laya` (ModernBERT-large, 421 M), served by `laya-serve` on the local GPU behind the Laya-compatible `POST /v1/systemone` API.
 
-The decision layer is **provider-neutral**: everything in this section applies equally to Laya (§23). `DECISION_PROVIDER` picks the implementation behind the `DecisionModel` interface; thresholds and gates don't change.
+The decision layer is **provider-neutral**: `DECISION_PROVIDER` picks the implementation behind the `DecisionModel` interface (`laya` or `llm_fallback`); thresholds and gates don't change.
 
-### 20.1 Where Jev sits
+### 20.1 Where Laya sits
 
 | Use | Path | Effect on latency |
 |---|---|---|
 | Per-turn signals (intent, competitor, out-of-scope, frustration, wants-human, purchase intent) | **Parallel**: fired when the user turn completes, alongside the LLM. Results apply from the *next* turn and to logging. | None on the current turn |
-| Booking-confirmation gate | **Serial**, only on the turn where the caller answers the confirmation summary | One Jev call (~70–500 ms per vendor figures) on one turn per booking |
-| LangGraph router (Phase 8) | Serial, every turn when `ORCHESTRATOR=langgraph` and `LG_ROUTER=jev` | One Jev call per turn |
+| Booking-confirmation gate | **Serial**, only on the turn where the caller answers the confirmation summary | One Laya call (~30–60 ms per question on the local GPU; measured in Phase 7) on one turn per booking |
+| LangGraph router (Phase 8) | Serial, every turn when `ORCHESTRATOR=langgraph` and `LG_ROUTER=decision` | One Laya call per turn |
 
-Jev never decides prices, dates, slot availability, or phone validity. Those stay in `domain/` and the DB.
+Laya never decides prices, dates, slot availability, or phone validity. Those stay in `domain/` and the DB.
 
 ### 20.2 Questions (`decisions/questions.py`)
 
@@ -639,14 +602,14 @@ Context = the last 4 turns of transcript plus the agent's current state (`awaiti
 
 All questions for one turn go in **one** request.
 
-### 20.3 How signals are used (`JEV_MODE=enforce`)
+### 20.3 How signals are used (`DECISION_MODE=enforce`)
 
 - **Confirmation gate:** `book_test_ride` proceeds only if `confirms_booking ≥ 0.85` and `corrects_detail = none`. Between 0.5 and 0.85, or on timeout or error, the agent re-confirms once more ("Bas confirm kar rahi hoon — kal shaam 5 baje, Activa 125, theek hai?"). Below 0.5, or any correction, the agent goes back to the field in question. This catches answers like "haan… nahi ruko, kal nahi" where the LLM might still set `caller_confirmed=True`.
 - **Escalation:** `wants_human` (confidence ≥ 0.8), or `frustration ≥ 4` on two consecutive turns, injects a note into the next turn's instructions so the agent offers a showroom callback via `capture_lead`.
 - **Lead scoring:** the maximum `purchase_intent` in the call is stored on the booking or lead and shown in the frontend panel (hot / warm / cold).
-- **Competitor / out-of-scope:** logged and used for analytics only. The prompt handles the reply; Jev does not override it.
+- **Competitor / out-of-scope:** logged and used for analytics only. The prompt handles the reply; Laya does not override it.
 
-`JEV_MODE=shadow`: run every question, log the results, and change nothing. `off`: no calls.
+`DECISION_MODE=shadow`: run every question, log the results, and change nothing. `off`: no calls.
 
 ### 20.4 Storage — `003_call_signals.sql`
 
@@ -659,7 +622,7 @@ create table public.call_signals (
   answer      text not null,          -- option, score, or probability as text
   confidence  numeric(4,3),
   latency_ms  int,
-  model       text not null,          -- pinned Jev version or 'llm-fallback'
+  model       text not null,          -- Laya checkpoint + version, or 'llm-fallback'
   created_at  timestamptz not null default now()
 );
 alter table public.call_signals enable row level security;
@@ -674,7 +637,7 @@ Build a labelled set from the eval scenarios and demo transcripts:
 - 60 single turns labelled for `intent`, covering all six languages (at least 6 per language), including mis-transcribed brand names.
 - 40 confirmation-turn answers across the six languages, including tricky ones ("haan theek hai", "haan par number galat hai", "ek minute", "nahi kal nahi parson", "ok ok", "aamaa, aana number thappu").
 
-Compare Jev against `llm_fallback.py` (same questions through the LLM's structured output) on accuracy, calibration, and latency.
+Compare Laya against `llm_fallback.py` (same questions through the LLM's structured output) on accuracy, calibration, and latency.
 
 | Gate | Target to enable |
 |---|---|
@@ -682,7 +645,7 @@ Compare Jev against `llm_fallback.py` (same questions through the LLM's structur
 | Intent (analytics, escalation) | ≥ 90 % accuracy; p90 latency ≤ 500 ms |
 | Frustration / purchase-intent scores | Agreement within ±1 of human label on ≥ 80 % |
 
-If Jev misses a target, keep that question in `shadow` or switch it to `llm_fallback`.
+If Laya misses a target, keep that question in `shadow` or switch it to `llm_fallback`.
 
 ---
 
@@ -696,23 +659,23 @@ Native LiveKit handoffs cover the POC. LangGraph earns its cost if the product g
 
 - Graph: `route → sales_node | booking_node → END`. Each node is a **streaming** LLM node with the same tools as §7.
 - **No guardrail node.** Speech transforms stay in `tts_node` (§9). A node that post-processes the full reply forces buffering and erases streaming.
-- Router: `LG_ROUTER=jev` (Jev `intent` question mapped to a node), `rules` (sticky state: stay in the current node unless a handoff tool fired), or `llm`. Prefer `jev` or `rules`.
+- Router: `LG_ROUTER=decision` (Laya `intent` question mapped to a node), `rules` (sticky state: stay in the current node unless a handoff tool fired), or `llm`. Prefer `decision` or `rules`.
 - Checkpointer: in-memory per call in the hot path. Persist to Postgres only at call end (or asynchronously), never synchronously per turn.
 - Wire into LiveKit through its LangChain/LangGraph adapter (verify the current API) so STT, TTS, VAD, and turn detection stay unchanged.
 
 ### 21.3 Latency A/B
 
-These are **estimates to check, not measurements**. Baseline is the native setup from Phase 1–6 (target p50 TTFA ≈ 1.0–1.2 s).
+These are **estimates to check, not measurements**. Baseline is the native setup from Phase 1–6 (measured p50 TTFA ≈ 1.95 s at the end of Phase 1).
 
 | Config | Added per-turn latency (estimate) | Why |
 |---|---|---|
 | Native LiveKit handoffs | 0 (baseline) | Handoff costs an LLM call only on the turn that switches agent |
 | LangGraph + `rules` router | ~5–50 ms | Graph execution and adapter overhead only |
-| LangGraph + `jev` router | ~70–500 ms | One Jev call before the main LLM, per vendor latency range |
+| LangGraph + `decision` router | ~30–100 ms | One local Laya call before the main LLM |
 | LangGraph + `llm` router | ~300–900 ms | A full non-streamed structured LLM call before the main LLM |
 | Any config + buffering guardrail node | +0.5–2 s more | Waits for the whole reply before TTS starts |
 
-Benchmark: `uv run python -m evals.latency_ab --configs native,lg_rules,lg_jev,lg_llm`. Run the 25 scenarios × 3 repetitions per config through the text harness, plus 10 live audio calls per config. Report p50/p90 TTFA, routing accuracy, and task success. Adopt LangGraph only if p50 TTFA rises by ≤ 150 ms, or if a feature from §21.1 justifies the cost.
+Benchmark: `uv run python -m evals.latency_ab --configs native,lg_rules,lg_decision,lg_llm`. Run the 25 scenarios × 3 repetitions per config through the text harness, plus 10 live audio calls per config. Report p50/p90 TTFA, routing accuracy, and task success. Adopt LangGraph only if p50 TTFA rises by ≤ 150 ms, or if a feature from §21.1 justifies the cost.
 
 ---
 
@@ -760,24 +723,43 @@ Rules:
 
 ---
 
-## 23. Laya decision model (alternative provider for §20)
+## 23. Laya, self-hosted (decision provider for §20)
 
-### 23.1 What it is
+### 23.1 What it is and why local
 
-Laya (Convai Innovations) is a decision model in the same class as Jev: given context and typed questions, it returns yes/no, choice, or score answers with probabilities. It is offered through Vercel's AI Gateway via the AI SDK evaluation API, a native HTTP API, and a **TypeSafe-compatible API**, with model IDs `convaiinnovations/laya` and `convaiinnovations/laya-free`. It is free on the gateway through **2026-10-31**; after that the `-free` ID stops serving and the standard ID is billed.
+Laya (Convai Innovations, [github.com/NandhaKishorM/laya](https://github.com/NandhaKishorM/laya), Apache-2.0) is a non-generative decision model: given text and typed questions it returns `choice`, `score`, or `noul` (P(true)) answers with confidences, in one forward pass. It replaces Jev (TypeSafe AI), which is paid and was dropped on 2026-10-15. Running it locally removes the per-call cost, the 2026-10-31 free-tier deadline, and the network hop.
 
-Latency is not published. Measure it before using Laya in the serial confirmation gate.
+| Checkpoint | Encoder | Params | Use here |
+|---|---|---|---|
+| `laya-multilingual` | mmBERT-base | 322 M | Default: Hindi/Hinglish and the four South Indian languages |
+| `laya` | ModernBERT-large | 421 M | English-only turns, if it measures better there |
 
-### 23.2 How it fits
+README figures: ~33 ms per question on a T4 GPU, 192–464 ms per call on CPU. The README reports 48 of 51 benchmarked languages above 3× random, but names none of Tamil, Telugu, Malayalam, Kannada, so the labelled set (§20.5) must cover each of them.
 
-- `decisions/laya_client.py` implements the same `DecisionModel` protocol as Jev: one request per turn carrying all questions from §20.2, returning `{answer, confidence, latency_ms}` per question.
-- Selected with `DECISION_PROVIDER=laya`. Thresholds (§20.3), shadow/enforce modes, timeouts, and fail-safe behaviour are unchanged.
-- Results are logged to `call_signals` with `model = LAYA_MODEL`, so Jev and Laya can be compared from the same table.
-- Inside the LiveKit agent, it is used exactly like Jev: per-turn signals are fired without awaiting from `on_user_turn_completed`; the confirmation gate is awaited with a timeout inside `book_test_ride`.
+### 23.2 Running it
 
-### 23.3 Comparison plan (part of Phase 7)
+- Own virtual environment in `services/laya/.venv` (git-ignored) with `laya[serve]==0.4.7` and PyTorch (CUDA), so PyTorch stays out of the agent's environment.
+- `services/laya/run.sh` starts `laya-serve` on **127.0.0.1:8100** (8000 is reserved for §22), device `cuda`, preloading `english,multilingual`; weights (~2.3 GB) cache in `services/laya/models/` (git-ignored).
+- Development machine (2026-10-15): NVIDIA RTX A3000 Laptop GPU (6 GB), 31 GB RAM; CUDA detected by PyTorch 2.14.
+- Phases 10–11 (§24): add it to `docker-compose.yml` as a GPU service, or run it on CPU.
 
-Run Jev, Laya, and `llm_fallback` over the §20.5 labelled set (60 intent turns, 40 confirmation turns), ideally before 2026-10-31 while Laya is free.
+### 23.2a First smoke test (2026-10-15, `laya-multilingual`, local GPU)
+
+Two questions per call (`confirms_booking` noul + `corrects_detail` choice) on 11 confirmation answers in all six languages:
+- **Latency:** p50 28 ms, max 72 ms (Latin script ~27 ms, Indic scripts ~44 ms).
+- **Safety:** 0 false accepts with the §20.3 gate (≥ 0.85 and no correction).
+- **Usefulness, out of the box: poor.** All 6 clear "yes" answers fell short of the gate (Hinglish 0.84, English 0.69, Kannada "ಹೌದು, ಬುಕ್ ಮಾಡಿ" 0.00, Malayalam 0.28), and `corrects_detail` was right in only 6/11 (Tamil and Telugu "yes" were classed as `phone`).
+- So the gate would fail safe (always re-confirm) but add a turn to every booking. Phase 7 must measure it on the full labelled set, try question wording and Laya's calibration (`laya.calibrate`) and fine-tuning (`laya train`) tools, and fall back to `llm_fallback` per question where it misses its target.
+
+### 23.3 How it fits
+
+- `decisions/laya_client.py` implements the `DecisionModel` protocol: one `POST /v1/systemone` per turn carrying all questions from §20.2, returning `{answer, confidence, latency_ms}` per question, with `DECISION_TIMEOUT_MS`.
+- Results are logged to `call_signals` with `model = laya-<checkpoint>@0.4.7`, so Laya and `llm_fallback` can be compared from the same table.
+- Inside the agent, per-turn signals are fired without awaiting; the confirmation gate is awaited with the timeout inside `book_test_ride`, and fails safe to a re-confirmation.
+
+### 23.4 Comparison plan (Phase 7)
+
+Run Laya (`multilingual`, and `english` on English turns) and `llm_fallback` over the §20.5 labelled set.
 
 | Metric | Measured per provider |
 |---|---|
@@ -785,10 +767,9 @@ Run Jev, Laya, and `llm_fallback` over the §20.5 labelled set (60 intent turns,
 | Unnecessary re-confirmations (target ≤ 10 %) | ✓ |
 | Intent accuracy per language | ✓ |
 | Calibration (confidence vs. actual accuracy) | ✓ |
-| p50 / p90 latency from India | ✓ |
-| Cost per 1,000 calls after free period | ✓ |
+| p50 / p90 latency on the local GPU (and on CPU) | ✓ |
 
-Pick one provider for `enforce`; the other can stay in `shadow` as a cross-check. Record the decision and numbers in this section.
+Enable `enforce` only for questions where Laya meets its target; others stay in `shadow` or use `llm_fallback`. Record the decision and numbers here.
 
 ---
 
@@ -810,7 +791,7 @@ Phase 11 data move: `pg_dump --data-only` the bookings, leads and call_signals t
 
 ### 24.1 What still needs the internet
 
-Self-hosting covers transport and storage only. These remain cloud APIs: **Sarvam** STT/TTS, the **Azure OpenAI** LLM, **Jev/Laya**, and **Google Calendar** (the calendar mirror can be switched off with `CALENDAR_SYNC=off`). A fully offline agent would need local STT, TTS and LLM models, which is out of scope.
+Self-hosting covers transport and storage only. These remain cloud APIs: **Sarvam** STT/TTS, the **Azure OpenAI** LLM, and **Google Calendar** (Laya already runs locally) (the calendar mirror can be switched off with `CALENDAR_SYNC=off`). A fully offline agent would need local STT, TTS and LLM models, which is out of scope.
 
 ### 24.2 `docker-compose.yml`
 

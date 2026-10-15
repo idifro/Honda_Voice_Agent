@@ -9,7 +9,7 @@ dependencies = [
     #   detected language (SpeechData.language) and language_probability (as confidence);
     #   TTS.update_options(target_language_code=...) switches language per turn; no `keyterms`.
     # - Turn detection: use livekit.agents.inference.TurnDetector (the turn-detector plugin is
-    #   deprecated in 1.8.8). Local v1-mini supports only hi/en of our six; cloud v1 list TBD (step 6).
+    #   deprecated in 1.8.8). Cloud v1 supports all six (step 6); local v1-mini only hi/en.
     "livekit-agents==1.8.8",
     "livekit-plugins-sarvam==1.8.8",
     "livekit-plugins-silero==1.8.8",
@@ -19,6 +19,7 @@ dependencies = [
     "asyncpg==0.32.0",
     "pydantic>=2.9,<3",
     "pydantic-settings==2.16.0",
+    "python-dotenv==1.2.4",           # export .env to os.environ for the LiveKit plugins
 ]
 
 [dependency-groups]
@@ -42,6 +43,9 @@ extend-exclude = ["frontend", "scripts/build_catalog.py"]   # vendored generator
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "ASYNC", "DTZ"]   # DTZ: no naive datetimes (CLAUDE.md rule 7)
+
+[tool.ruff.lint.per-file-ignores]
+"src/honda_voice/agent/prompts.py" = ["E501"]   # prompt prose and native-language lines
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -376,6 +376,7 @@ dependencies = [
     { name = "livekit-plugins-turn-detector" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dotenv" },
     { name = "sarvamai" },
 ]
 
@@ -396,6 +397,7 @@ requires-dist = [
     { name = "livekit-plugins-turn-detector", specifier = "==1.8.8" },
     { name = "pydantic", specifier = ">=2.9,<3" },
     { name = "pydantic-settings", specifier = "==2.16.0" },
+    { name = "python-dotenv", specifier = "==1.2.4" },
     { name = "sarvamai", specifier = "==0.1.37" },
 ]
 

@@ -17,13 +17,13 @@
     "as_of": "2026-10-14",
     "precision": "approx",
     "source": "https://www.zigwheels.com/bike-comparison/honda-activa-electric-vs-honda-qc1",
-    "notes": "Launch prices: Standard Rs 1,17,000, RoadSync Duo Rs 1,51,600. A 2026 report says production was paused; confirm availability with dealer."
+    "notes": "Standard Rs 1,18,000 (launch price was Rs 1,17,000), RoadSync Duo Rs 1,51,600. A 2026 report says production was paused; confirm availability with dealer."
   },
   "variants": [
     {
       "name": "Standard",
-      "ex_showroom_inr": 117000,
-      "notes": "launch price"
+      "ex_showroom_inr": 118000,
+      "notes": "current ex-showroom (product owner, 2026-10-15); launch price was Rs 1,17,000"
     },
     {
       "name": "RoadSync Duo",

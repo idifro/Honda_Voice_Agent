@@ -31,3 +31,7 @@ logs/
 .vscode/
 .idea/
 .DS_Store
+
+# Local Laya decision server (Phase 7): own venv + model cache, not committed
+services/laya/.venv/
+services/laya/models/

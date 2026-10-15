@@ -1,0 +1,505 @@
+{
+ "city": "Delhi",
+ "as_of": "2026-10-15",
+ "price_type": "on-road (ex-showroom + RTO + insurance + other charges)",
+ "collected_from": "BikeWale Delhi price pages, fetched 2026-10-15; only figures shown on the page, no derived values",
+ "not_listed": {
+  "rebel-500": "upcoming model, no on-road price"
+ },
+ "entries": [
+  {
+   "bike_id": "activa-110",
+   "variant_label": "Standard",
+   "on_road_inr": 90030,
+   "source": "https://www.bikewale.com/honda-bikes/activa-6g/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 76358,
+   "rto_inr": 7609,
+   "insurance_inr": 6063,
+   "other_charges": []
+  },
+  {
+   "bike_id": "activa-110",
+   "variant_label": "25-year Anniversary Edition",
+   "on_road_inr": 99338,
+   "source": "https://www.bikewale.com/honda-bikes/activa-6g/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "activa-110",
+   "variant_label": "Deluxe",
+   "on_road_inr": 102135,
+   "source": "https://www.bikewale.com/honda-bikes/activa-6g/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "activa-110",
+   "variant_label": "H-Smart",
+   "on_road_inr": 107050,
+   "source": "https://www.bikewale.com/honda-bikes/activa-6g/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "activa-125",
+   "variant_label": "25-year Anniversary Edition",
+   "on_road_inr": 105733,
+   "source": "https://www.bikewale.com/honda-bikes/activa-125/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 89656,
+   "rto_inr": 8672,
+   "insurance_inr": 7405,
+   "other_charges": []
+  },
+  {
+   "bike_id": "activa-125",
+   "variant_label": "DLX",
+   "on_road_inr": 107262,
+   "source": "https://www.bikewale.com/honda-bikes/activa-125/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "activa-125",
+   "variant_label": "H-Smart",
+   "on_road_inr": 112175,
+   "source": "https://www.bikewale.com/honda-bikes/activa-125/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "activa-e",
+   "variant_label": "Standard",
+   "on_road_inr": 123077,
+   "source": "https://www.bikewale.com/honda-bikes/activa-e/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 120133,
+   "rto_inr": 1500,
+   "insurance_inr": 6444,
+   "other_charges": [
+    {
+     "label": "PM E-Drive subsidy",
+     "amount_inr": -5000
+    }
+   ]
+  },
+  {
+   "bike_id": "activa-e",
+   "variant_label": "RoadSync Duo",
+   "on_road_inr": 170884,
+   "source": "https://www.bikewale.com/honda-bikes/activa-e/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "adv160",
+   "variant_label": "Standard",
+   "on_road_inr": 196632,
+   "source": "https://www.bikewale.com/honda-bikes/adv-160/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 170000,
+   "rto_inr": 15100,
+   "insurance_inr": 11532,
+   "other_charges": []
+  },
+  {
+   "bike_id": "cb1000-hornet-sp",
+   "variant_label": "SP",
+   "on_road_inr": 1500903,
+   "source": "https://www.bikewale.com/honda-bikes/cb1000-hornet/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 1329390,
+   "rto_inr": 114351,
+   "insurance_inr": 43869,
+   "other_charges": [
+    {
+     "label": "TCS 1%",
+     "amount_inr": 13293
+    }
+   ]
+  },
+  {
+   "bike_id": "cb125-hornet",
+   "variant_label": "Standard",
+   "on_road_inr": 132401,
+   "source": "https://www.bikewale.com/honda-bikes/cb-125-hornet/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 115485,
+   "rto_inr": 9769,
+   "insurance_inr": 7147,
+   "other_charges": []
+  },
+  {
+   "bike_id": "cb350c",
+   "variant_label": "STD",
+   "on_road_inr": 229965,
+   "source": "https://www.bikewale.com/honda-bikes/cb350c/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 200300,
+   "rto_inr": 17524,
+   "insurance_inr": 12141,
+   "other_charges": []
+  },
+  {
+   "bike_id": "cb350c",
+   "variant_label": "DLX",
+   "on_road_inr": 232605,
+   "source": "https://www.bikewale.com/honda-bikes/cb350c/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb350c",
+   "variant_label": "Special Edition",
+   "on_road_inr": 234805,
+   "source": "https://www.bikewale.com/honda-bikes/cb350c/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb350",
+   "variant_label": "STD",
+   "on_road_inr": 224354,
+   "source": "https://www.bikewale.com/honda-bikes/cb350/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 195200,
+   "rto_inr": 17116,
+   "insurance_inr": 12038,
+   "other_charges": []
+  },
+  {
+   "bike_id": "cb350",
+   "variant_label": "DLX",
+   "on_road_inr": 227325,
+   "source": "https://www.bikewale.com/honda-bikes/cb350/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb350",
+   "variant_label": "Chrome",
+   "on_road_inr": 229525,
+   "source": "https://www.bikewale.com/honda-bikes/cb350/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb350-hness",
+   "variant_label": "STD (BikeWale CB350 listing)",
+   "on_road_inr": 224354,
+   "source": "https://www.bikewale.com/honda-bikes/cb350/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 195200,
+   "rto_inr": 17116,
+   "insurance_inr": 12038,
+   "other_charges": [],
+   "needs_review": "CB350 H'ness: BikeWale's hness-cb350 page redirects to its CB350 listing (STD/DLX/Chrome); variant names don't match our DLX/DLX Pro."
+  },
+  {
+   "bike_id": "cb350rs",
+   "variant_label": "STD",
+   "on_road_inr": 229525,
+   "source": "https://www.bikewale.com/honda-bikes/cb350rs/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 199900,
+   "rto_inr": 17492,
+   "insurance_inr": 12133,
+   "other_charges": []
+  },
+  {
+   "bike_id": "cb350rs",
+   "variant_label": "DLX",
+   "on_road_inr": 232385,
+   "source": "https://www.bikewale.com/honda-bikes/cb350rs/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb500",
+   "variant_label": "Alloy",
+   "on_road_inr": 320159,
+   "source": "https://www.bikewale.com/honda-bikes/cb500/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 275000,
+   "rto_inr": 23500,
+   "insurance_inr": 21659,
+   "other_charges": []
+  },
+  {
+   "bike_id": "cb500",
+   "variant_label": "Spoke",
+   "on_road_inr": 347576,
+   "source": "https://www.bikewale.com/honda-bikes/cb500/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb500",
+   "variant_label": "Spoke with Stripe",
+   "on_road_inr": 349778,
+   "source": "https://www.bikewale.com/honda-bikes/cb500/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "cb750-hornet",
+   "variant_label": "Standard",
+   "on_road_inr": 1189373,
+   "source": "https://www.bikewale.com/honda-bikes/cb750-hornet/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 1049000,
+   "rto_inr": 91920,
+   "insurance_inr": 37963,
+   "other_charges": [
+    {
+     "label": "TCS 1%",
+     "amount_inr": 10490
+    }
+   ]
+  },
+  {
+   "bike_id": "cbr1000rr-r-sp",
+   "variant_label": "SP",
+   "on_road_inr": 3762930,
+   "source": "https://www.bikewale.com/honda-bikes/cbr1000rr-r-fireblade/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 3350000,
+   "rto_inr": 293000,
+   "insurance_inr": 86430,
+   "other_charges": [
+    {
+     "label": "TCS 1%",
+     "amount_inr": 33500
+    }
+   ]
+  },
+  {
+   "bike_id": "dio-110",
+   "variant_label": "Standard",
+   "on_road_inr": 85155,
+   "source": "https://www.bikewale.com/honda-bikes/dio/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 71085,
+   "rto_inr": 7187,
+   "insurance_inr": 6883,
+   "other_charges": []
+  },
+  {
+   "bike_id": "dio-110",
+   "variant_label": "Deluxe",
+   "on_road_inr": 98714,
+   "source": "https://www.bikewale.com/honda-bikes/dio/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "dio-125",
+   "variant_label": "X Edition",
+   "on_road_inr": 102527,
+   "source": "https://www.bikewale.com/honda-bikes/dio-125/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 88133,
+   "rto_inr": 7611,
+   "insurance_inr": 6783,
+   "other_charges": []
+  },
+  {
+   "bike_id": "dio-125",
+   "variant_label": "Standard",
+   "on_road_inr": 104720,
+   "source": "https://www.bikewale.com/honda-bikes/dio-125/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "dio-125",
+   "variant_label": "H-Smart",
+   "on_road_inr": 109706,
+   "source": "https://www.bikewale.com/honda-bikes/dio-125/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "gold-wing-tour",
+   "variant_label": "Standard",
+   "on_road_inr": 4962879,
+   "source": "https://www.bikewale.com/honda-bikes/Goldwing/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 4430000,
+   "rto_inr": 379400,
+   "insurance_inr": 109179,
+   "other_charges": [
+    {
+     "label": "TCS 1%",
+     "amount_inr": 44300
+    }
+   ]
+  },
+  {
+   "bike_id": "hornet-2-0",
+   "variant_label": "Standard",
+   "on_road_inr": 174961,
+   "source": "https://www.bikewale.com/honda-bikes/hornet/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 150301,
+   "rto_inr": 13524,
+   "insurance_inr": 11136,
+   "other_charges": []
+  },
+  {
+   "bike_id": "livo",
+   "variant_label": "Drum",
+   "on_road_inr": 93868,
+   "source": "https://www.bikewale.com/honda-bikes/livo/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 80330,
+   "rto_inr": 6956,
+   "insurance_inr": 6582,
+   "other_charges": []
+  },
+  {
+   "bike_id": "livo",
+   "variant_label": "Disc",
+   "on_road_inr": 96700,
+   "source": "https://www.bikewale.com/honda-bikes/livo/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "nx200",
+   "variant_label": "Standard",
+   "on_road_inr": 189315,
+   "source": "https://www.bikewale.com/honda-bikes/nx200/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 161296,
+   "rto_inr": 14404,
+   "insurance_inr": 13615,
+   "other_charges": []
+  },
+  {
+   "bike_id": "nx500",
+   "variant_label": "Standard",
+   "on_road_inr": 839948,
+   "source": "https://www.bikewale.com/honda-bikes/nx500/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 743900,
+   "rto_inr": 64512,
+   "insurance_inr": 31536,
+   "other_charges": []
+  },
+  {
+   "bike_id": "qc1",
+   "variant_label": "Standard",
+   "on_road_inr": 91345,
+   "source": "https://www.bikewale.com/honda-bikes/qc1/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 90708,
+   "rto_inr": 530,
+   "insurance_inr": 5107,
+   "other_charges": [
+    {
+     "label": "PM E-Drive subsidy",
+     "amount_inr": -5000
+    }
+   ]
+  },
+  {
+   "bike_id": "qc3",
+   "variant_label": "Standard",
+   "on_road_inr": 167437,
+   "source": "https://www.bikewale.com/honda-bikes/qc3/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 135000,
+   "rto_inr": 1500,
+   "insurance_inr": 5937,
+   "other_charges": [
+    {
+     "label": "PM E-Drive subsidy",
+     "amount_inr": -5000
+    },
+    {
+     "label": "Delhi State Subsidy (as listed)",
+     "amount_inr": 30000
+    }
+   ],
+   "needs_review": "Page lists a 'Delhi State Subsidy' of +30,000 added to the total; a subsidy should reduce it. Verify before use."
+  },
+  {
+   "bike_id": "rebel-300",
+   "variant_label": "Standard",
+   "on_road_inr": 253837,
+   "source": "https://www.bikewale.com/honda-bikes/rebel-300/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 222000,
+   "rto_inr": 19260,
+   "insurance_inr": 12577,
+   "other_charges": []
+  },
+  {
+   "bike_id": "rebel-300",
+   "variant_label": "E-Clutch",
+   "on_road_inr": 297841,
+   "source": "https://www.bikewale.com/honda-bikes/rebel-300/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "shine-125",
+   "variant_label": "Drum",
+   "on_road_inr": 98727,
+   "source": "https://www.bikewale.com/honda-bikes/shine/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 83422,
+   "rto_inr": 8174,
+   "insurance_inr": 7131,
+   "other_charges": []
+  },
+  {
+   "bike_id": "shine-125",
+   "variant_label": "Limited Edition",
+   "on_road_inr": 102363,
+   "source": "https://www.bikewale.com/honda-bikes/shine/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "shine-125",
+   "variant_label": "Disc",
+   "on_road_inr": 103205,
+   "source": "https://www.bikewale.com/honda-bikes/shine/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "shine-100",
+   "variant_label": "Standard",
+   "on_road_inr": 77945,
+   "source": "https://www.bikewale.com/honda-bikes/shine-100/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 65642,
+   "rto_inr": 5781,
+   "insurance_inr": 6522,
+   "other_charges": []
+  },
+  {
+   "bike_id": "shine-100-dx",
+   "variant_label": "DX",
+   "on_road_inr": 84872,
+   "source": "https://www.bikewale.com/honda-bikes/shine-100/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "sp-125",
+   "variant_label": "Drum",
+   "on_road_inr": 106230,
+   "source": "https://www.bikewale.com/honda-bikes/sp-125/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 90498,
+   "rto_inr": 8740,
+   "insurance_inr": 6992,
+   "other_charges": []
+  },
+  {
+   "bike_id": "sp-125",
+   "variant_label": "Disc",
+   "on_road_inr": 114638,
+   "source": "https://www.bikewale.com/honda-bikes/sp-125/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "sp-160",
+   "variant_label": "Single Disc",
+   "on_road_inr": 140926,
+   "source": "https://www.bikewale.com/honda-bikes/sp160/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 118060,
+   "rto_inr": 10945,
+   "insurance_inr": 11921,
+   "other_charges": []
+  },
+  {
+   "bike_id": "sp-160",
+   "variant_label": "Double Disc",
+   "on_road_inr": 146903,
+   "source": "https://www.bikewale.com/honda-bikes/sp160/price-in-newdelhi/"
+  },
+  {
+   "bike_id": "unicorn",
+   "variant_label": "Standard",
+   "on_road_inr": 138863,
+   "source": "https://www.bikewale.com/honda-bikes/unicorn/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 115832,
+   "rto_inr": 10767,
+   "insurance_inr": 12264,
+   "other_charges": []
+  },
+  {
+   "bike_id": "xl750-transalp",
+   "variant_label": "Standard",
+   "on_road_inr": 1490471,
+   "source": "https://www.bikewale.com/honda-bikes/transalp-xl750/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 1320000,
+   "rto_inr": 113600,
+   "insurance_inr": 43671,
+   "other_charges": [
+    {
+     "label": "TCS 1%",
+     "amount_inr": 13200
+    }
+   ]
+  },
+  {
+   "bike_id": "xr300l",
+   "variant_label": "Standard",
+   "on_road_inr": 210933,
+   "source": "https://www.bikewale.com/honda-bikes/xr300l/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 183000,
+   "rto_inr": 16140,
+   "insurance_inr": 11793,
+   "other_charges": []
+  },
+  {
+   "bike_id": "xr300-rally",
+   "variant_label": "Standard",
+   "on_road_inr": 238436,
+   "source": "https://www.bikewale.com/honda-bikes/xr300-rally/price-in-newdelhi/",
+   "ex_showroom_basis_inr": 208000,
+   "rto_inr": 18140,
+   "insurance_inr": 12296,
+   "other_charges": []
+  }
+ ]
+}

@@ -19,8 +19,8 @@ Real-time voice agent for a Honda (HMSI) showroom. It answers model and price qu
 9. **The service-role key and DB URL never reach the browser.** The frontend only reads data through Next.js server routes.
 10. **Every public table has RLS enabled.** New migrations must enable it.
 11. **Never disparage competitors or state facts about competitor products.** Follow the competitor policy in SPEC §8.
-12. **Jev gives judgments, code applies rules (SPEC §20).** Jev never decides prices, dates, slots, or phone validity. Only the booking-confirmation gate may call Jev in the serial voice path; every other Jev call runs in parallel and must not delay audio. On Jev timeout or error, fail safe (re-confirm), never fail open.
-13. **LangGraph (Phase 8) stays behind `ORCHESTRATOR=langgraph`, and the native path is never removed.** No full-reply post-processing nodes; route with `jev` or `rules` unless the A/B in SPEC §21.3 justifies `llm`.
+12. **The decision model gives judgments, code applies rules (SPEC §20).** The decision model is Laya, self-hosted (`services/laya/run.sh`, SPEC §23); Jev is not used. It never decides prices, dates, slots, or phone validity. Only the booking-confirmation gate may call it in the serial voice path; every other call runs in parallel and must not delay audio. On timeout or error, fail safe (re-confirm), never fail open.
+13. **LangGraph (Phase 8) stays behind `ORCHESTRATOR=langgraph`, and the native path is never removed.** No full-reply post-processing nodes; route with `decision` or `rules` unless the A/B in SPEC §21.3 justifies `llm`.
 
 ## Commands
 
@@ -38,14 +38,15 @@ uv run ruff check . && uv run ruff format --check .
 uv run pytest -q                                     # unit tests (no network)
 uv run pytest -q -m integration                      # needs a Supabase test DB (local Postgres from Phase 11)
 uv run python -m evals.run_text_evals                # scripted conversation evals
-uv run python -m evals.jev_labelled                  # Phase 7: Jev vs LLM-fallback on labelled turns
-uv run python -m evals.latency_ab --configs native,lg_rules,lg_jev,lg_llm   # Phase 8 A/B
+services/laya/run.sh                                 # Phase 7: local Laya decision server on 127.0.0.1:8100
+uv run python -m evals.decision_labelled             # Phase 7: Laya vs LLM-fallback on labelled turns
+uv run python -m evals.latency_ab --configs native,lg_rules,lg_decision,lg_llm   # Phase 8 A/B
 
 # Frontend
 cd frontend && pnpm install && pnpm dev              # http://localhost:3000
 ```
 
-DB migrations are in `data/migrations/`, applied in numeric order (Supabase SQL editor or `psql "$DATABASE_URL" -f ...`; auto-applied by Docker in Phase 11).
+DB migrations are in `data/migrations/`, applied in numeric order with `uv run python scripts/apply_migrations.py` (records each file in `schema_migrations`; auto-applied by Docker in Phase 11).
 
 ## Code conventions
 

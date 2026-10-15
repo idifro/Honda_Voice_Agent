@@ -66,3 +66,25 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def build_llm(
+    settings: Settings,
+):  # -> livekit.agents.llm.LLM (imported lazily: config stays cheap to import)
+    """The live-path LLM (SPEC §4): Azure OpenAI, lowest reasoning effort, short replies, no temperature."""
+    from livekit.plugins import openai
+
+    if settings.llm_provider != "azure":
+        raise ValueError(f"LLM_PROVIDER={settings.llm_provider!r} is not wired up yet; use 'azure'")
+    kwargs = {}
+    if settings.llm_model.startswith("gpt-5"):  # gpt-4.1-* rejects reasoning_effort
+        kwargs["reasoning_effort"] = settings.llm_reasoning_effort
+    return openai.LLM.with_azure(
+        model=settings.llm_model,
+        azure_endpoint=settings.azure_openai_endpoint,
+        azure_deployment=settings.azure_openai_deployment,
+        api_version=settings.azure_openai_api_version,
+        api_key=settings.azure_openai_api_key.get_secret_value(),
+        max_completion_tokens=settings.llm_max_tokens,
+        **kwargs,
+    )

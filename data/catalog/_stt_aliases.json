@@ -1,0 +1,27 @@
+{
+ "_about": "Spellings Sarvam STT actually produced for model names (step 7 recordings and TTS round trips, 2026-10-15). Added to bike_aliases by scripts/seed_catalog.py; extend as new recordings show new spellings.",
+ "aliases": {
+  "cb350-hness": [
+   "hiness",
+   "hince",
+   "cb350hince",
+   "cb350 hince",
+   "cb350 hiness",
+   "cb350hiness",
+   "cb350hns",
+   "hns",
+   "aethinus"
+  ],
+  "unicorn": [
+   "anicon",
+   "अनिकॉन",
+   "அன்யகான்"
+  ],
+  "sp-125": [
+   "sb 125"
+  ],
+  "cb350rs": [
+   "cb350 rs"
+  ]
+ }
+}

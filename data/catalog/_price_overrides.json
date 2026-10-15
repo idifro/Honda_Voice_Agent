@@ -1,0 +1,47 @@
+{
+ "_about": "Product-owner price decisions applied by scripts/seed_catalog.py on top of the generated catalog (scripts/build_catalog.py is read-only). Each entry replaces the model's price block and the named variant prices.",
+ "overrides": [
+  {
+   "bike_id": "unicorn",
+   "decided": "2026-10-15, product owner: adopt BikeWale Delhi ex-showroom",
+   "price": {
+    "min": 115832,
+    "max": 115832,
+    "as_of": "2026-10-15",
+    "precision": "exact",
+    "source": "https://www.bikewale.com/honda-bikes/unicorn/price-in-newdelhi/"
+   },
+   "variants": {
+    "Standard": 115832
+   }
+  },
+  {
+   "bike_id": "sp-160",
+   "decided": "2026-10-15, product owner: adopt BikeWale Delhi ex-showroom (Single Disc; Double Disc not listed)",
+   "price": {
+    "min": 118060,
+    "max": 118060,
+    "as_of": "2026-10-15",
+    "precision": "exact",
+    "source": "https://www.bikewale.com/honda-bikes/sp160/price-in-newdelhi/"
+   },
+   "variants": {
+    "Single Disc": 118060
+   }
+  },
+  {
+   "bike_id": "nx200",
+   "decided": "2026-10-15, product owner: adopt BikeWale Delhi ex-showroom",
+   "price": {
+    "min": 161296,
+    "max": 161296,
+    "as_of": "2026-10-15",
+    "precision": "exact",
+    "source": "https://www.bikewale.com/honda-bikes/nx200/price-in-newdelhi/"
+   },
+   "variants": {
+    "Standard": 161296
+   }
+  }
+ ]
+}
