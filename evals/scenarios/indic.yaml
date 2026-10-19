@@ -1,0 +1,80 @@
+# Price and booking in Tamil, Telugu, Malayalam and Kannada (×8). Native lines need a native-speaker review.
+- name: "indic: Tamil price"
+  start_language: ta-IN
+  turns:
+    - say: "Shine 125 விலை என்ன?"
+      expect: {price: true}
+
+- name: "indic: Telugu price"
+  start_language: te-IN
+  turns:
+    - say: "Shine 100 ధర ఎంత?"
+      expect: {price: true}
+
+- name: "indic: Malayalam price"
+  start_language: ml-IN
+  turns:
+    - say: "CB350 H'ness ന്റെ വില എത്രയാണ്?"
+      expect: {price: true}
+
+- name: "indic: Kannada price"
+  start_language: kn-IN
+  turns:
+    - say: "Activa 125 ಬೆಲೆ ಎಷ್ಟು?"
+      expect: {price: true}
+
+- name: "indic: Tamil booking"
+  start_language: ta-IN
+  turns:
+    - say: "நாளைக்கு மாலை 4 மணிக்கு Shine 100 test ride book பண்ணணும்"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "ஆமா, licence இருக்கு"
+    - say: "என் பெயர் கார்த்திக்"
+    - say: "9000054321"
+      expect: {tools: [confirm_details]}
+    - say: "ஆமா, confirm பண்ணுங்க"
+  expect:
+    booked: 1
+    booking: {model: shine-100, time: "16:00", phone: "9000054321", language: ta-IN}
+
+- name: "indic: Telugu booking"
+  start_language: te-IN
+  turns:
+    - say: "రేపు సాయంత్రం 5 గంటలకు Shine 125 test ride book చేయాలి"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "అవును, licence ఉంది"
+    - say: "నా పేరు శ్రీనివాస్"
+    - say: "9000013131"
+      expect: {tools: [confirm_details]}
+    - say: "అవును, confirm చేయండి"
+  expect:
+    booked: 1
+    booking: {model: shine-125, time: "17:00", phone: "9000013131", language: te-IN}
+
+- name: "indic: Malayalam booking"
+  start_language: ml-IN
+  turns:
+    - say: "നാളെ രാവിലെ 11 മണിക്ക് Dio 110 test ride book ചെയ്യണം"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "അതെ, licence ഉണ്ട്"
+    - say: "എന്റെ പേര് അനു"
+    - say: "9000014141"
+      expect: {tools: [confirm_details]}
+    - say: "അതെ, confirm ചെയ്യൂ"
+  expect:
+    booked: 1
+    booking: {model: dio-110, time: "11:00", phone: "9000014141", language: ml-IN}
+
+- name: "indic: Kannada booking"
+  start_language: kn-IN
+  turns:
+    - say: "ನಾಳೆ ಮಧ್ಯಾಹ್ನ 3 ಗಂಟೆಗೆ CB125 Hornet test ride book ಮಾಡಬೇಕು"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "ಹೌದು, licence ಇದೆ"
+    - say: "ನನ್ನ ಹೆಸರು ಮಂಜು"
+    - say: "9000015151"
+      expect: {tools: [confirm_details]}
+    - say: "ಹೌದು, confirm ಮಾಡಿ"
+  expect:
+    booked: 1
+    booking: {model: cb125-hornet, time: "15:00", phone: "9000015151", language: kn-IN}

@@ -9,9 +9,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-import asyncpg
-
-from honda_voice.config import get_settings
+from honda_voice.db.pool import connect
 
 MIGRATIONS = Path(__file__).resolve().parents[1] / "data" / "migrations"
 TRACKING = """
@@ -25,7 +23,7 @@ alter table public.schema_migrations enable row level security;
 
 
 async def main() -> int:
-    conn = await asyncpg.connect(get_settings().database_url.get_secret_value())
+    conn = await connect()
     try:
         await conn.execute(TRACKING)
         applied = {

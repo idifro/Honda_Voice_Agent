@@ -137,3 +137,12 @@ def test_next_language_infers_from_script_when_detection_missing():
     assert (
         next_language("ta-IN", "What is the price of the Activa", None, None) == "ta-IN"
     )  # Latin: no switch
+
+
+def test_is_language_pick():
+    from honda_voice.domain.language import is_language_pick
+
+    for pick in ("Tamil", "தமிழ்", "English please", "Hindi mein baat karo", "తెలుగు"):
+        assert is_language_pick(pick), pick
+    for other in ("hello", "", "Tamil English", "can you please tell me in Tamil the price of Activa"):
+        assert not is_language_pick(other), other

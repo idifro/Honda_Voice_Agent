@@ -1,0 +1,43 @@
+# Misheard or invalid phone numbers (×3): ask again, never book an unvalidated number.
+- name: "phone: too short, then a slot change at the read-back (English)"
+  turns:
+    - say: "Book a test ride on the Unicorn tomorrow at 11 am please"
+    - say: "Yes I have a licence"
+    - say: "Priya"
+    - say: "98765"
+      expect: {no_tools: [confirm_details, book_test_ride]}  # validate_phone optional: obviously short
+    - say: "9000067890"
+      expect: {tools: [confirm_details]}
+    - say: "No wait, make it 11:30 instead"
+      expect: {no_tools: [book_test_ride], says_any: ["11:30"]}
+    - say: "Yes, that's right"
+    - say: "Yes"  # in case the 11:30 read-back came one turn late (the guard then asks again)
+  expect:
+    booked: 1
+    booking: {model: unicorn, time: "11:30", name: Priya, phone: "9000067890"}
+
+- name: "phone: invalid first digit (English)"
+  turns:
+    - say: "I want to test ride the CB350 tomorrow at 12 noon"
+    - say: "Yes, I have a licence"
+    - say: "Vikram"
+    - say: "5 8 7 6 5 4 3 2 1 0"
+      expect: {no_tools: [book_test_ride]}
+    - say: "Sorry, it's 9 0 0 0 0 5 5 5 5 5"
+    - say: "Yes, confirm"
+  expect:
+    booked: 1
+    booking: {model: cb350, time: "12:00", name: Vikram, phone: "9000055555"}
+
+- name: "phone: number words (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Kal dopahar saade teen baje SP125 ki test ride chahiye"
+    - say: "Haan, licence hai"
+    - say: "Anil"
+    - say: "nau shunya shunya shunya shunya chhe chhe chhe chhe chhe"
+      expect: {tools: [validate_phone]}
+    - say: "Haan, sahi hai, confirm karo"
+  expect:
+    booked: 1
+    booking: {model: sp-125, time: "15:30", name: Anil, phone: "9000066666", language: hi-IN}

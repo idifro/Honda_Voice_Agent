@@ -37,11 +37,18 @@ _CURRENCY_TAIL = re.compile(
 _URL = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
 _KMPL = re.compile(r"\bkm/l(?:itre|iter)?\b|\bkmpl\b", re.IGNORECASE)  # no inner spaces: must fit one segment
 _CC_AFTER_NUMBER = re.compile(r"(?<=\d)\s?cc\b", re.IGNORECASE)
+# A booking code the LLM wrote raw ("HND-W8X8D", seen with gpt-5.4-nano) instead of the tool's spelled form:
+# spelled here the same way as bookings.speak_reference, so TTS reads it character by character.
+_REFERENCE = re.compile(r"\bHND-([A-Z2-9]{5})\b")
+# "10-digit": TTS read the hyphenated token letter by letter ("1 0 d i g i t", 2026-10-16 call).
+_NUMBER_HYPHEN_WORD = re.compile(r"(?<=\d)-(?=[^\W\d_])")
 _CC_ALONE = re.compile(r"\bcc\b", re.IGNORECASE)
 _BULLET = re.compile(r"(?m)^[ \t]*(?:[-*•]|\d+[.)])[ \t]+")
 _MARKUP_CHARS = str.maketrans("", "", "*_`#")
 _SPACES = re.compile(r"[ \t]{2,}")
 _EMOJI_JOINERS = {"‍", "️", "︎"}
+# Internal per-turn lines the LLM sometimes echoes ("... [caller_language] English"): dropped to the line end.
+_INTERNAL_TAG = re.compile(r"\[(?:caller_language|booking_state)\]", re.IGNORECASE)
 
 
 @dataclass
@@ -71,6 +78,61 @@ def _strip_emoji(text: str) -> str:
     return "".join(out)
 
 
+class _TagDropper:
+    """Drops echoed internal lines ('[caller_language] English …') from whole segments, to the line end."""
+
+    def __init__(self) -> None:
+        self._in_tag = False  # inside an echoed internal line: drop text until the next newline
+        self._removed: list[str] = []
+
+    def take_removed(self) -> list[str]:
+        out, self._removed = self._removed, []
+        return out
+
+    def drop(self, segment: str) -> str:
+        out = []
+        while segment:
+            if self._in_tag:
+                newline = segment.find("\n")
+                if newline < 0:
+                    return "".join(out)
+                self._in_tag, segment = False, segment[newline:]
+                continue
+            m = _INTERNAL_TAG.search(segment)
+            if m is None:
+                out.append(segment)
+                break
+            self._removed.append(f"internal tag spoken: {m.group(0)}")
+            out.append(segment[: m.start()].rstrip(" \t"))
+            self._in_tag, segment = True, segment[m.end() :]
+        return "".join(out)
+
+
+class InternalTagFilter:
+    """Streaming filter for the LLM's own output (in llm_node), so an echoed tag never reaches the chat
+    history: once it's there, the LLM copies it every turn (step 14 eval). Holds back only a partial word."""
+
+    def __init__(self) -> None:
+        self._buf = ""
+        self._tags = _TagDropper()
+        self.removed: list[str] = []
+
+    def feed(self, chunk: str) -> str:
+        self._buf += chunk
+        cut = max(self._buf.rfind(c) for c in (" ", "\n", "\t")) + 1
+        segment, self._buf = self._buf[:cut], self._buf[cut:]
+        return self._drop(segment)
+
+    def flush(self) -> str:
+        segment, self._buf = self._buf, ""
+        return self._drop(segment)
+
+    def _drop(self, segment: str) -> str:
+        out = self._tags.drop(segment) if segment else ""
+        self.removed += self._tags.take_removed()
+        return out
+
+
 class SpeechCleaner:
     """Feed LLM text chunks, get speakable text back. Call `flush()` at the end of the reply."""
 
@@ -80,6 +142,7 @@ class SpeechCleaner:
         self._buf = ""
         self._line_start = True  # only whitespace since the last newline: a bullet may start here
         self._prev_out = ""  # last char emitted: avoids double spaces across segments
+        self._tags = _TagDropper()
 
     def feed(self, chunk: str) -> str:
         self._buf += chunk
@@ -97,11 +160,15 @@ class SpeechCleaner:
         return self._process(segment)
 
     def _process(self, segment: str) -> str:
+        segment = self._tags.drop(segment)
+        self.stats.violations += self._tags.take_removed()
         if not segment:
             return ""
         text = _URL.sub("", segment)
         text = _CURRENCY.sub(self._spoken_price, text)
         text = _KMPL.sub("kilometre per litre", text)
+        text = _REFERENCE.sub(lambda m: f"H N D, {' '.join(m.group(1))}", text)
+        text = _NUMBER_HYPHEN_WORD.sub(" ", text)
         text = _CC_AFTER_NUMBER.sub(" C C", text)
         text = _CC_ALONE.sub("C C", text)
         # Bullets only count at a line start. Prefix one context char so `^` sees whether earlier

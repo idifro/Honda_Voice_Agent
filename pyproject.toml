@@ -20,6 +20,7 @@ dependencies = [
     "pydantic>=2.9,<3",
     "pydantic-settings==2.16.0",
     "python-dotenv==1.2.4",           # export .env to os.environ for the LiveKit plugins
+    "google-auth==2.43.0",
 ]
 
 [dependency-groups]
@@ -27,6 +28,7 @@ dev = [
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "ruff==0.17.0",
+    "pyyaml==6.0.3",                  # evals/scenarios/*.yaml (already in the lock via livekit-agents)
 ]
 
 [build-system]

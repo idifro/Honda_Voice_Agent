@@ -38,9 +38,38 @@ class Settings(BaseSettings):
     azure_openai_deployment: str = ""
     azure_openai_deployment_alt: str = ""
     azure_openai_api_version: str = "2024-12-01-preview"
+    # Resilience (Phase 5+): a stalled request (no bytes for this long) is abandoned and retried; normal first
+    # token is ~1 s. A hang on 2026-10-16 waited the 10 s default.
+    llm_attempt_timeout_s: float = 4.0
+    llm_max_retry: int = 1  # quick retries on the same deployment before failing over
+    # Optional fallback deployment: on errors, 429s or stalls the session switches to it, and back to the
+    # primary once a background check sees it healthy again. Endpoint/key default to the primary's.
+    azure_openai_fallback_deployment: str = ""
+    azure_openai_fallback_model: str = ""  # e.g. gpt-5.4-mini; decides whether reasoning_effort is sent
+    azure_openai_fallback_endpoint: str = ""
+    azure_openai_fallback_api_key: SecretStr = SecretStr("")
+
+    # Google Calendar mirror (SPEC §11): write-only copy of bookings, never blocks a booking (rule 8)
+    calendar_sync: str = "off"  # on | off
+    google_calendar_id: str = ""
+    google_service_account_json: str = ""  # path to the key file (git-ignored secrets/)
+
+    # Development log file (until development is complete): INFO and above, JSON lines, rotated. Phone
+    # numbers are masked at INFO; LiveKit logs tool arguments (which can hold them) only at DEBUG. Empty: off.
+    log_file: str = "logs/worker.log"
+
+    # Call limits (Phase 5): every call costs LiveKit, Sarvam and Azure usage; a forgotten tab mustn't run on
+    max_call_minutes: float = 10
+    # Calls one worker process accepts at once; beyond this LiveKit sends new calls elsewhere (or they wait),
+    # so a burst can't exceed the Azure/Sarvam quotas.
+    max_concurrent_calls: int = 3
+
+    # Hold line: after this much "thinking", a short fixed line ("One moment please, let me check.").
+    hold_after_s: float = 2.0
 
     # Database / showroom
     database_url: SecretStr = SecretStr("")
+    database_ca_cert: str = "certs/supabase-prod-ca-2021.crt"  # verify the DB's TLS cert; empty: don't
     showroom_id: str = "demo-showroom"
     business_tz: str = "Asia/Kolkata"
 
@@ -68,23 +97,67 @@ def get_settings() -> Settings:
     return Settings()
 
 
+def _azure_llm(settings: Settings, *, model: str, deployment: str, endpoint: str, api_key: str):
+    from livekit.plugins import openai
+
+    kwargs = {}
+    if model.startswith("gpt-5"):  # gpt-4.1-* rejects reasoning_effort
+        kwargs["reasoning_effort"] = settings.llm_reasoning_effort
+    return openai.LLM.with_azure(
+        model=model,
+        azure_endpoint=endpoint,
+        azure_deployment=deployment,
+        api_version=settings.azure_openai_api_version,
+        api_key=api_key,
+        max_completion_tokens=settings.llm_max_tokens,
+        **kwargs,
+    )
+
+
 def build_llm(
     settings: Settings,
 ):  # -> livekit.agents.llm.LLM (imported lazily: config stays cheap to import)
-    """The live-path LLM (SPEC §4): Azure OpenAI, lowest reasoning effort, short replies, no temperature."""
-    from livekit.plugins import openai
+    """The live-path LLM (SPEC §4): Azure OpenAI, lowest reasoning effort, short replies, no temperature.
 
+    With AZURE_OPENAI_FALLBACK_DEPLOYMENT set, a FallbackAdapter: each attempt is abandoned after
+    LLM_ATTEMPT_TIMEOUT_S without bytes and retried LLM_MAX_RETRY times, then the fallback takes over; the
+    primary is probed in the background and used again once it answers. Rate limits (429) count as errors.
+    """
     if settings.llm_provider != "azure":
         raise ValueError(f"LLM_PROVIDER={settings.llm_provider!r} is not wired up yet; use 'azure'")
-    kwargs = {}
-    if settings.llm_model.startswith("gpt-5"):  # gpt-4.1-* rejects reasoning_effort
-        kwargs["reasoning_effort"] = settings.llm_reasoning_effort
-    return openai.LLM.with_azure(
+    primary = _azure_llm(
+        settings,
         model=settings.llm_model,
-        azure_endpoint=settings.azure_openai_endpoint,
-        azure_deployment=settings.azure_openai_deployment,
-        api_version=settings.azure_openai_api_version,
+        deployment=settings.azure_openai_deployment,
+        endpoint=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key.get_secret_value(),
-        max_completion_tokens=settings.llm_max_tokens,
-        **kwargs,
+    )
+    if not settings.azure_openai_fallback_deployment:
+        return primary
+    from livekit.agents.llm import FallbackAdapter
+
+    fallback = _azure_llm(
+        settings,
+        model=settings.azure_openai_fallback_model or settings.llm_model,
+        deployment=settings.azure_openai_fallback_deployment,
+        endpoint=settings.azure_openai_fallback_endpoint or settings.azure_openai_endpoint,
+        api_key=(
+            settings.azure_openai_fallback_api_key.get_secret_value()
+            or settings.azure_openai_api_key.get_secret_value()
+        ),
+    )
+    return FallbackAdapter(
+        [primary, fallback],
+        attempt_timeout=settings.llm_attempt_timeout_s,
+        max_retry_per_llm=settings.llm_max_retry,
+        retry_interval=0.3,
+    )
+
+
+def llm_conn_options(settings: Settings):  # -> livekit.agents.APIConnectOptions
+    """Per-attempt stall timeout and quick retries for a single deployment (no fallback configured)."""
+    from livekit.agents import APIConnectOptions
+
+    return APIConnectOptions(
+        max_retry=settings.llm_max_retry + 1, retry_interval=0.3, timeout=settings.llm_attempt_timeout_s
     )

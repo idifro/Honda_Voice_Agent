@@ -1,0 +1,34 @@
+# Price questions (SPEC §15: ×5). Prices must be the tool's spoken strings, word for word (rule 4).
+- name: "price: Activa 125 ex-showroom (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Activa 125 ka price kya hai?"
+      expect: {price: true, says_any: ["ex-showroom"]}
+
+- name: "price: Shine 100 on-road Delhi (English)"
+  turns:
+    - say: "What's the on-road price of the Shine 100 in Delhi?"
+      expect: {price: true, says_any: ["on-road"]}
+
+- name: "price: Hornet 2.0 on-road breakdown (English)"
+  turns:
+    - say: "Give me the on-road price breakdown for the Hornet 2.0"
+      # four prices plus the city note, all asked for: allowed up to 60 words (target stays 40)
+      expect: {price: true, says_any: ["RTO", "insurance"], max_words: 60}
+
+- name: "price: CB350 H'ness range (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "CB350 H'ness kitne ka aata hai?"
+      expect: {price: true}
+
+- name: "price: bare family name asks which model (English)"
+  turns:
+    - say: "How much is the activa?"
+      expect: {says_all: ["110", "125"]}
+
+- name: "price: Gold Wing on-road breakdown with TCS (Tamil)"
+  start_language: ta-IN
+  turns:
+    - say: "Goldwing on-road price breakdown சொல்லுங்க"
+      expect: {price: true, max_words: 60}

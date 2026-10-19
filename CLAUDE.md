@@ -38,12 +38,16 @@ uv run ruff check . && uv run ruff format --check .
 uv run pytest -q                                     # unit tests (no network)
 uv run pytest -q -m integration                      # needs a Supabase test DB (local Postgres from Phase 11)
 uv run python -m evals.run_text_evals                # scripted conversation evals
+scripts/check_all.sh                                 # pre-demo gate: lint, all tests, evals (SKIP_EVALS=1: quick)
+uv run python scripts/latency_report.py --room honda- # TTFA p50/p90 etc. from logs/turns.jsonl vs §1 targets
 services/laya/run.sh                                 # Phase 7: local Laya decision server on 127.0.0.1:8100
 uv run python -m evals.decision_labelled             # Phase 7: Laya vs LLM-fallback on labelled turns
 uv run python -m evals.latency_ab --configs native,lg_rules,lg_decision,lg_llm   # Phase 8 A/B
 
 # Frontend
-cd frontend && pnpm install && pnpm dev              # http://localhost:3000
+cd frontend && pnpm install && pnpm dev              # http://localhost:3000 (no global pnpm: `corepack pnpm@9.15.9 …`)
+cd frontend && pnpm test                             # Vitest: sign-in, token route, rate limits
+uv run python scripts/set_frontend_db_password.py    # (re)set the read-only frontend DB role -> frontend/.env.local
 ```
 
 DB migrations are in `data/migrations/`, applied in numeric order with `uv run python scripts/apply_migrations.py` (records each file in `schema_migrations`; auto-applied by Docker in Phase 11).

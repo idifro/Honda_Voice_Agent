@@ -3,44 +3,40 @@ The catalog comes from the database (db/catalog.py), loaded once per call."""
 
 import asyncio
 import logging
-from collections.abc import AsyncIterable
 from typing import Any
 
-from livekit.agents import Agent, ModelSettings, function_tool, llm
+from livekit.agents import function_tool, llm
 
-from honda_voice.agent.metrics import TurnMetrics
-from honda_voice.agent.prompts import GREETING_TEXT, SALES_INSTRUCTIONS, turn_instructions
-from honda_voice.agent.text_transforms import TransformStats, clean_text_stream
-from honda_voice.db.catalog import Catalog
+from honda_voice.agent.base_agent import MultilingualAgent
+from honda_voice.agent.call_state import CallState
+from honda_voice.agent.prompts import GREETING_TEXT, INTRO, SALES_INSTRUCTIONS, turn_instructions
 from honda_voice.domain.catalog_view import bike_summary, compare_view, list_item
-from honda_voice.domain.datetime_resolve import now_ist, showroom_status
-from honda_voice.domain.language import next_language, script_mismatch
+from honda_voice.domain.competitors import competitor_pivot
+from honda_voice.domain.datetime_resolve import showroom_status
+from honda_voice.domain.language import is_language_pick
+from honda_voice.domain.scope import asks_about_price, out_of_scope_topic
 
 logger = logging.getLogger("honda_voice.agent")
+PRICE_KEYS = {"variants", "on_road", "variant_price_instruction"}
+COMPETITOR_NOTE = (
+    "Say nothing at all about the other product (no price, mileage or opinion). Acknowledge it briefly, "
+    "then offer this Honda with one fact and a question."
+)
 
 
-class SalesAgent(Agent):
+class SalesAgent(MultilingualAgent):
     def __init__(
         self,
+        state: CallState,
         *,
-        catalog: Catalog,
-        initial_language: str,
-        supported_languages: list[str],
-        tts: Any | None = None,  # the session's Sarvam TTS, retargeted per turn
-        turn_metrics: TurnMetrics | None = None,
         greet: bool = True,
+        resume: bool = False,
+        chat_ctx: llm.ChatContext | None = None,
     ) -> None:
-        super().__init__(instructions=SALES_INSTRUCTIONS)
-        self.catalog = catalog
-        self.lang = initial_language
-        self.supported = supported_languages
-        self._tts = tts
-        self._metrics = turn_metrics
+        """greet: say the fixed greeting on entry (call start). resume: reply on entry (handed back)."""
+        super().__init__(instructions=SALES_INSTRUCTIONS, state=state, chat_ctx=chat_ctx)
         self._greet = greet
-        self._detected: str | None = None
-        self._tts_lang = initial_language  # language the TTS is currently set to
-        self._last_user_msg_id: str | None = None
-        self._caller_turns = 0  # the intro line is offered on the first caller turn only
+        self._resume = resume
 
     async def on_enter(self) -> None:
         if self._greet:
@@ -48,6 +44,8 @@ class SalesAgent(Agent):
             # The first LLM call of a session took 1–6 s (connection + empty prompt cache); warm both
             # while the greeting plays so the caller's first question doesn't pay for it.
             self._warmup = asyncio.create_task(self._warm_llm())
+        elif self._resume:
+            self.session.generate_reply()
 
     async def _warm_llm(self) -> None:
         try:
@@ -60,100 +58,77 @@ class SalesAgent(Agent):
         except Exception:  # best effort: a failed warm-up must never affect the call
             logger.debug("LLM warm-up failed", exc_info=True)
 
-    def note_detected_language(self, code: str | None) -> None:
-        """Record STT's detected language for the next language decision."""
-        if code:
-            self._detected = code
+    def _turn_context(self, transcript: str) -> list[str]:
+        if topic := out_of_scope_topic(transcript):  # in code: pre-fetched facts pull the LLM into answering
+            note = f"The caller is asking about {topic}, which is out of scope: don't answer it or ask which "
+            return [note + "model; say the out-of-scope line."]
+        facts = self._prefetched_facts(transcript)
+        return [facts] if facts else []
 
-    def _update_language(self, transcript: str) -> None:
-        new = next_language(self.lang, transcript, self._detected, None, self.supported)
-        switched = new != self.lang
-        if switched:
-            logger.info("session language %s -> %s", self.lang, new)
-            self.lang = new  # the TTS follows in tts_node, just before the reply's audio starts
-        if self._metrics:
-            self._metrics.record_language(self.lang, switched)
-        self._detected = None
+    def _fixed_reply(self, transcript: str) -> str | None:
+        """The intro, straight from code, when the caller's first turn only picks a language ("Tamil",
+        "English please"): no LLM call. Anything more (a model, a price, a question) goes to the LLM."""
+        if self.state.caller_turns != 1 or not is_language_pick(transcript, self.state.supported):
+            return None
+        if self.catalog.index.mentions(transcript) or asks_about_price(transcript):
+            return None
+        if out_of_scope_topic(transcript) or competitor_pivot(transcript)[0]:
+            return None
+        return INTRO[self.lang]
 
-    # The language tag goes in llm_node, not on_user_turn_completed: preemptive generation skips that hook.
-    async def llm_node(self, chat_ctx, tools, model_settings: ModelSettings):
-        user_msg = next(
-            (
-                m
-                for m in reversed(chat_ctx.items)
-                if getattr(m, "type", None) == "message" and m.role == "user"
-            ),
-            None,
-        )
-        if user_msg is not None and user_msg.id != self._last_user_msg_id:
-            self._last_user_msg_id = user_msg.id
-            self._caller_turns += 1
-            # Decided here, on the exact message the LLM answers: preemptive generation can start from a
-            # preflight transcript before any final-transcript event (console runs 2 and 3), so event
-            # timing can't be relied on. Detection comes from the latest transcript event, else the script.
-            self._update_language(user_msg.text_content or "")
-        ctx = chat_ctx.copy()
-        if user_msg is not None and (facts := self._prefetched_facts(user_msg.text_content or "")):
-            ctx.add_message(role="system", content=facts)
-        # Last, so it outweighs long facts and earlier turns: English turns drifted into Hinglish when the
-        # facts came after it (step 10 text check).
-        ctx.add_message(
-            role="system", content=turn_instructions(self.lang, include_intro=self._caller_turns == 1)
-        )
-        async for chunk in Agent.default.llm_node(self, ctx, tools, model_settings):
-            yield chunk
+    def _turn_instructions(self) -> str:
+        return turn_instructions(self.lang, include_intro=self.state.caller_turns == 1)
+
+    def _not_found(self, query: str) -> dict[str, Any]:
+        """No Honda model by that name: pivot from a competitor in code (rule 11), else offer a callback."""
+        competitor, honda_id = competitor_pivot(query)
+        if honda_id:
+            return {
+                "found": False,
+                "competitor_mentioned": True,
+                "closest_honda": {"found": True, **bike_summary(self.catalog.models[honda_id], self.lang)},
+                "note": COMPETITOR_NOTE,
+            }
+        if competitor:
+            return {
+                "found": False,
+                "competitor_mentioned": True,
+                "note": "Another brand: say nothing about it. Ask what kind of bike or budget they want, "
+                "then use list_bikes.",
+            }
+        note = "No Honda model by that name: say the showroom will check and offer a callback."
+        return {"found": False, "note": note}
 
     def _prefetched_facts(self, transcript: str) -> str | None:
         """find_bike output for models named in the transcript, so most product questions need one LLM
         call instead of two (step 6b). Same data and rules as the tool; the tool remains for anything else."""
         matches = self.catalog.index.matches(transcript)
-        if not matches or len(matches) > 2:
+        if not matches:
+            _, honda_id = competitor_pivot(transcript)
+            if honda_id is None:
+                return None
+            fact = {"found": True, **bike_summary(self.catalog.models[honda_id], self.lang)}
+            return f"The caller named another brand's model. {COMPETITOR_NOTE} Closest Honda, fetched: {fact}"
+        if len(matches) > 2:
             return None
+        competitor, _ = competitor_pivot(transcript)
+        # Comparisons kept adding unasked prices (55+ words, step 14 eval): leave them out unless asked.
+        drop_prices = len(matches) == 2 and not asks_about_price(transcript)
         facts = []
         for alias, bike_id in matches:
             fact = {"found": True, **bike_summary(self.catalog.models[bike_id], self.lang)}
+            if drop_prices:
+                fact = {k: v for k, v in fact.items() if k not in PRICE_KEYS and not k.startswith("price")}
+                fact["prices"] = "not asked: don't mention prices"
             if similar := self.catalog.index.similar(alias):
                 fact["similar_models"] = [self.catalog.models[i]["name"] for i in similar]
                 fact["similar_note"] = "The caller used a family name: ask which of these they mean first."
             facts.append(fact)
+        note = f" The caller also named another brand. {COMPETITOR_NOTE}" if competitor else ""
         return (
             "find_bike results for the model(s) the caller named, already fetched; answer from these "
-            f"without calling find_bike for them: {facts}"
+            f"without calling find_bike for them: {facts}{note}"
         )
-
-    # All speech cleanup happens here, streaming (CLAUDE.md rule 3).
-    async def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings):
-        # Preemptive TTS can call this before llm_node has decided the turn's language. The first text chunk
-        # only exists after llm_node ran, so wait for it, then set the TTS language, then open the stream.
-        chunks = aiter(text)
-        try:
-            first = await anext(chunks)
-        except StopAsyncIteration:
-            return
-        lang, stats, spoken = self.lang, TransformStats(), []
-        if self._tts is not None and self._tts_lang != lang:
-            self._tts.update_options(target_language_code=lang)
-            self._tts_lang = lang
-
-        async def rest() -> AsyncIterable[str]:
-            yield first
-            async for chunk in chunks:
-                yield chunk
-
-        async def cleaned() -> AsyncIterable[str]:
-            async for piece in clean_text_stream(rest(), lang, stats):
-                spoken.append(piece)
-                yield piece
-
-        async for frame in Agent.default.tts_node(self, cleaned(), model_settings):
-            yield frame
-        mismatch = script_mismatch(lang, "".join(spoken))
-        if mismatch:
-            stats.violations.append(mismatch)
-        if stats.violations:
-            logger.warning("guardrail violations: %s", stats.violations)
-        if self._metrics:
-            self._metrics.record_reply(lang, stats)
 
     @function_tool
     async def find_bike(self, query: str) -> dict[str, Any]:
@@ -165,14 +140,7 @@ class SalesAgent(Agent):
         """
         result = await self.catalog.find(query)
         if not result.bike_ids:
-            return {
-                "found": False,
-                "note": (
-                    "No Honda model by that name. If it's another brand's model, say nothing about it and "
-                    "call find_bike for the closest Honda (commuter: Shine 100, scooter: Activa 125, 350cc: "
-                    "CB350 H'ness). Otherwise say the showroom will check and offer a callback."
-                ),
-            }
+            return self._not_found(query)
         if len(result.bike_ids) > 1:
             return {
                 "found": False,
@@ -236,6 +204,35 @@ class SalesAgent(Agent):
                 Omit if the caller didn't give a time.
         """
         try:
-            return showroom_status(day_ref, time_24h, now_ist())
+            return showroom_status(day_ref, time_24h, self.state.clock())
         except ValueError as e:
             return {"error": str(e), "note": "Ask the caller which day (and time) they mean."}
+
+    @function_tool
+    async def start_booking(
+        self, model: str | None = None, day_ref: str | None = None, time_24h: str | None = None
+    ) -> Any:
+        """Hand the call over to test-ride booking, also for cancelling a booking.
+
+        Args:
+            model: The model the caller wants to ride, as they said it. Omit if they haven't said.
+            day_ref: The day if the caller already said one: "today", "tomorrow", "day_after", "mon" … "sun",
+                or "YYYY-MM-DD". Omit otherwise.
+            time_24h: The time if already said, 24-hour "HH:MM" ("shaam 6 baje" -> "18:00"). Omit otherwise.
+        """
+        from honda_voice.agent.booking_agent import BookingAgent  # booking_agent imports this module
+
+        if model:
+            bike_id, _ = await self.catalog.find_one(model)
+            if bike_id is not None:
+                bike = self.catalog.models[bike_id]
+                if bike["status"] != "on_sale":
+                    return {
+                        "handed_over": False,
+                        "note": f"{bike['name']} is {bike['status'].replace('_', ' ')}: no test rides yet. "
+                        "Offer a callback when it's available (capture_lead, reason upcoming_model).",
+                    }
+                self.state.booking_model = bike["id"]
+        logger.info("handoff: sales -> booking (model=%s)", self.state.booking_model)
+        request = (day_ref, time_24h) if day_ref and self.state.booking_model else None
+        return BookingAgent(self.state, chat_ctx=self.chat_ctx, slot_request=request)

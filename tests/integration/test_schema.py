@@ -6,7 +6,7 @@ Run: `uv run pytest -q -m integration` (needs DATABASE_URL in .env).
 import asyncpg
 import pytest
 
-from honda_voice.config import get_settings
+from honda_voice.db.pool import connect
 
 pytestmark = pytest.mark.integration
 
@@ -22,7 +22,7 @@ BIKE = dict(
 
 @pytest.fixture
 async def tx():
-    conn = await asyncpg.connect(get_settings().database_url.get_secret_value())
+    conn = await connect()
     t = conn.transaction()
     await t.start()
     try:
@@ -126,16 +126,19 @@ async def test_booking_phone_and_language_checks(tx):
         "values ('s', 't-bike', now() + interval '1 day') returning id"
     )
     ins = (
-        "insert into public.bookings (reference, slot_id, customer_name, customer_phone, language) "
-        "values ($1, $2, 'Ravi', $3, $4)"
+        "insert into public.bookings (reference, slot_id, customer_name, customer_phone, language, "
+        "licence_confirmed) values ($1, $2, 'Ravi', $3, $4, $5)"
     )
-    await tx.execute(ins, "HND-OK001", slot, "9876543210", "ta-IN")
+    await tx.execute(ins, "HND-OK001", slot, "9876543210", "ta-IN", True)
     with pytest.raises(asyncpg.CheckViolationError):
         async with tx.transaction():
-            await tx.execute(ins, "HND-BAD01", slot, "5876543210", "ta-IN")  # invalid first digit
+            await tx.execute(ins, "HND-BAD01", slot, "5876543210", "ta-IN", True)  # invalid first digit
     with pytest.raises(asyncpg.CheckViolationError):
         async with tx.transaction():
-            await tx.execute(ins, "HND-BAD02", slot, "9876543211", "fr-FR")  # unsupported language
+            await tx.execute(ins, "HND-BAD02", slot, "9876543211", "fr-FR", True)  # unsupported language
+    with pytest.raises(asyncpg.CheckViolationError):
+        async with tx.transaction():
+            await tx.execute(ins, "HND-BAD03", slot, "9876543212", "ta-IN", False)  # no driving licence
     cols = {r["column_name"] for r in await tx.fetch(
         "select column_name from information_schema.columns where table_name in ('bookings', 'leads')"
     )}  # fmt: skip

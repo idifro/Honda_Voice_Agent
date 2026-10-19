@@ -1,0 +1,16 @@
+# Comparisons (×3): both Honda models, facts from tools only.
+- name: "compare: Unicorn vs SP160 (English)"
+  turns:
+    - say: "Compare the Unicorn and the SP160 for me"
+      expect: {says_all: ["Unicorn", "SP160"]}
+
+- name: "compare: Activa 125 vs Dio 125 (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Activa 125 aur Dio 125 mein kya fark hai?"
+      expect: {says_all: ["Activa", "Dio"]}
+
+- name: "compare: Shine 100 vs Livo mileage (English)"
+  turns:
+    - say: "Which gives better mileage, the Shine 100 or the Livo?"
+      expect: {says_all: ["Shine", "Livo"]}

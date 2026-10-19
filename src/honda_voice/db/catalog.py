@@ -145,6 +145,19 @@ class Catalog:
             return FindResult([hits[0][0]], "trigram", [hits[0][1]])
         return FindResult([h[0] for h in hits], "trigram", [h[1] for h in hits])
 
+    async def find_one(self, query: str) -> tuple[str | None, list[str]]:
+        """(the one model the caller means, []) or (None, candidate bike_ids to ask "which one?"). A family
+        name ("activa") is ambiguous; a model's own name is not, even if a longer one contains it ("Shine 100"
+        vs "Shine 100 DX": step 14 eval)."""
+        result = await self.find(query)
+        if len(result.bike_ids) != 1:
+            return None, result.bike_ids
+        bike_id = result.bike_ids[0]
+        own_name = normalize(self.models[bike_id]["name"].removeprefix("Honda "))
+        if result.similar and normalize(query) != own_name:
+            return None, [bike_id, *result.similar]
+        return bike_id, []
+
     async def _trigram(self, q: str) -> list[tuple[str, float]]:
         assert self.pool is not None
         async with self.pool.acquire() as conn:

@@ -1,0 +1,61 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="02 Call setup" name="02 Call setup">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" page="1" pageWidth="1600" pageHeight="1100">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="s1" value="1. Caller opens the page&lt;br&gt;enters DEMO_PASSCODE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="2. POST /api/login&lt;br&gt;constant-time check, 5/min/IP&lt;br&gt;sets hv_session cookie&lt;br&gt;(HttpOnly, SameSite=Strict, 2 h)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="260" y="30" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="3. Start call: POST /api/token&lt;br&gt;cookie checked, 10/min/IP&lt;br&gt;body ignored" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="530" y="30" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="4. Token signed locally with API secret:&lt;br&gt;room honda-&amp;lt;uuid&amp;gt;, caller-&amp;lt;uuid&amp;gt;&lt;br&gt;mic only, no data, 10 min,&lt;br&gt;dispatch agent honda-sales" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="790" y="30" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" value="5. Browser joins the room&lt;br&gt;on LiveKit Cloud (WebRTC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="790" y="180" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="s6" value="6. LiveKit dispatches a job&lt;br&gt;to a worker registered as&lt;br&gt;honda-sales (load &amp;lt; 1.0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="530" y="180" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s7" value="7. Worker entrypoint: AgentSession&lt;br&gt;(VAD, STT, LLM, TTS, turn detector),&lt;br&gt;CallState, catalog loads in background" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="230" y="180" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s8" value="8. Tamil greeting (fixed text, no LLM)&lt;br&gt;LLM warm-up in parallel;&lt;br&gt;10-min call limit timer; hold audio ready" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="230" y="300" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s9" value="9. Conversation turns&lt;br&gt;(see 03 Voice turn)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="20" y="300" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s1" target="s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s2" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s3" target="s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="token" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s4" target="s5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s5" target="s6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s6" target="s7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s7" target="s8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="s8" target="s9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

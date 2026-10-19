@@ -75,6 +75,13 @@ def _digits_from_text(raw: str) -> str | None:
     return "".join(out) or None
 
 
+def has_number(raw: str) -> bool:
+    """Whether `raw` contains any digit or number word: '98765' or 'nau shunya' yes, 'Priya' no."""
+    return any(
+        _to_ascii_digits(t) is not None or t.lower() in _REPEAT_WORDS for t in _SEPARATORS.split(raw) if t
+    )
+
+
 def normalize(raw: str) -> str | None:
     """Return a 10-digit Indian mobile number, or None if `raw` isn't clearly one.
 
@@ -96,6 +103,13 @@ def readback(phone: str) -> str:
     """'9876543210' -> '98765 43210' (5+5 grouping, read back before booking; CLAUDE.md rule 6)."""
     _require_normalized(phone)
     return f"{phone[:5]} {phone[5:]}"
+
+
+def speak(phone: str) -> str:
+    """'9876543210' -> '9 8 7 6 5, 4 3 2 1 0': the 5+5 read-back as TTS should say it, digit by digit
+    (written as '98765' it may be read as a single number)."""
+    _require_normalized(phone)
+    return f"{' '.join(phone[:5])}, {' '.join(phone[5:])}"
 
 
 def mask(phone: str) -> str:

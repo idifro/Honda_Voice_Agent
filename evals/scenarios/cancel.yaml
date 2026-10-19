@@ -1,0 +1,24 @@
+# Cancellation (×2). The booking is made before the call; {ref_spelled} is its code as STT might write it.
+- name: "cancel: code and number (English)"
+  setup:
+    booking: {model: livo, time: "13:00", name: Meera, phone: "9000077777"}
+  turns:
+    - say: "I want to cancel my test ride booking"
+      expect: {tools: [start_booking]}
+    - say: "The booking code is {ref_spelled}"
+    - say: "9000077777"
+      expect: {tools: [cancel_test_ride]}
+  expect:
+    cancelled: 1
+
+- name: "cancel: wrong number first (Hinglish)"
+  start_language: hi-IN
+  setup:
+    booking: {model: shine-125, time: "13:30", name: Ajay, phone: "9000078787"}
+  turns:
+    - say: "Meri test ride cancel karni hai"
+    - say: "Code hai {ref_spelled}"
+    - say: "9000099990"
+    - say: "Sorry, sahi number 9000078787 hai"
+  expect:
+    cancelled: 1

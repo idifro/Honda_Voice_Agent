@@ -129,6 +129,12 @@ def requested_language(text: str, supported: tuple[str, ...] | list[str] = tuple
     return named.pop() if len(named) == 1 else None
 
 
+def is_language_pick(text: str, supported: tuple[str, ...] | list[str] = tuple(LANGUAGES)) -> bool:
+    """The caller only named a language ("Tamil", "English please", "Hindi mein baat karo"): a short turn
+    naming exactly one language. Callers check separately that nothing else (a model, a price) was asked."""
+    return requested_language(text, supported) is not None and 0 < len(tokens(text)) <= 4
+
+
 def next_language(
     current: str,
     transcript: str,

@@ -1,0 +1,71 @@
+# Booking happy paths (×5). Each caller turn answers the agent's previous question; the final row in the
+# database must equal what the caller agreed to. Phone numbers are 90000xxxxx (eval only).
+- name: "booking: exact time free (English)"
+  turns:
+    - say: "I'd like to book a test ride for the Activa 125 tomorrow at 5 pm"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "Yes, I have a driving licence"
+      expect: {tools: [record_licence]}
+    - say: "My name is Arjun"
+    - say: "9 0 0 0 0 1 2 3 4 5"
+      expect: {tools: [validate_phone, confirm_details], says_all: ["9 0 0 0 0", "Arjun"]}
+    - say: "Yes, please confirm"
+      expect: {tools: [book_test_ride], says_any: ["H N D"]}
+  expect:
+    booked: 1
+    booking: {model: activa-125, time: "17:00", name: Arjun, phone: "9000012345", language: en-IN}
+
+- name: "booking: kal shaam 6 baje (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Kal shaam 6 baje Shine 100 ki test ride book karni hai"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "Haan, mere paas driving licence hai"
+    - say: "Mera naam Rohit hai"
+    - say: "9000022222"
+      expect: {tools: [confirm_details]}
+    - say: "Haan, confirm kar do"
+      expect: {tools: [book_test_ride]}
+  expect:
+    booked: 1
+    booking: {model: shine-100, time: "18:00", name: Rohit, phone: "9000022222", language: hi-IN}
+
+- name: "booking: no time given, caller picks an offered slot (English)"
+  turns:
+    - say: "Can I test ride the Hornet 2.0 tomorrow?"
+      expect: {slots_checked: true}
+    - say: "The first one works"
+    - say: "Yes, I have a valid licence"
+    - say: "Neha"
+    - say: "9000033333"
+    - say: "Yes, that's correct"
+  expect:
+    booked: 1
+    booking: {model: hornet-2-0, time: "10:00", name: Neha, phone: "9000033333"}
+
+- name: "booking: weekday and morning time (English)"
+  turns:
+    - say: "I'd like a test ride on the QC1 on Saturday at 11 am"
+      expect: {slots_checked: true}
+    - say: "Yes I do have a licence"
+    - say: "Kavya"
+    - say: "9000034343"
+    - say: "Yes, book it"
+  expect:
+    booked: 1
+    booking: {model: qc1, time: "11:00", name: Kavya}
+
+- name: "booking: model asked first (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Mujhe ek test ride book karni hai"
+    - say: "Activa 110"
+    - say: "Kal subah saade das baje"
+      expect: {slots_checked: true}
+    - say: "Haan ji, licence hai"
+    - say: "Suresh"
+    - say: "9000044444"
+    - say: "Haan ji, confirm karo"
+  expect:
+    booked: 1
+    booking: {model: activa-110, time: "10:30", name: Suresh, language: hi-IN}

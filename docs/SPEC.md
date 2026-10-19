@@ -137,6 +137,20 @@ if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint, agent_name="honda-sales"))
 ```
 
+### 4.2 Slow turns, stalls and failover (2026-10-16)
+
+Added after a browser call hung: an Azure request stalled for the 10 s default before its retry, then the worker lost its LiveKit connection.
+- **Streaming everywhere already:** STT interim transcripts, LLM started preemptively on the preflight transcript, token streaming, TTS from the first words, streaming `tts_node`. Typical turn: end-of-turn ~0.58 s, LLM TTFT 0.8–1.0 s, TTS first audio 0.2–0.3 s, TTFA ~1.5 s.
+- **No second LLM call for fixed tool lines (Phase 6):** the read-back (`confirm_details`) and the booked line (`book_test_ride`) are text built in code, so on the step after those tools `BookingAgent._fixed_tool_reply` speaks the tool's `say` directly (only if no other tool in that step failed); before, a second LLM call just repeated it. Measured on the same eval scenarios: read-back turn 3.55 → 2.24 s, booked turn 2.54 → 1.27 s (medians). The booked line also got a closing question and a shorter SMS sentence.
+- **Language decisions on discarded drafts (Phase 6):** preemptive generation can decide on a draft transcript that's then replaced; that draft's language switch is now undone (`CallState.turn_start_lang`), so one caller turn makes one decision. Switches are logged with their reason (explicit request, detected language, word count; no caller text). Prompted by 6 Tamil/English switches in the 2026-10-16 browser call, two within one second.
+- **No LLM call when code knows the reply:** if the caller's first turn only picks a language ("Tamil", "English please": `language.is_language_pick`, and no model, price, competitor or out-of-scope words), `SalesAgent._fixed_reply` streams the intro line straight to TTS. Code replies only ever answer the caller's message itself, never a tool-reply step.
+- **Stalls:** `LLM_ATTEMPT_TIMEOUT_S=4` (the HTTP stream gives up after 4 s without bytes; a streaming reply is never cut) and `LLM_MAX_RETRY=1` quick retries (0.3 s apart) instead of 10 s.
+- **Failover:** with `AZURE_OPENAI_FALLBACK_DEPLOYMENT` (and optionally its own endpoint, key and model) set, `build_llm` returns LiveKit's `FallbackAdapter`: errors, 429 rate limits and stalls switch the call to the fallback; the primary is probed in the background and used again once healthy. Verified 2026-10-16 against Azure with a missing primary: the first request failed over in 1.08 s, the next went straight to the fallback (0.72 s). The model's quality must be checked with `evals.run_text_evals --deployment … --model …` before it's configured: `gpt-4.1-mini` misspoke prices in the Phase 1 benchmark. **Configured 2026-10-16 (product owner): `gpt-5.4-nano`** (deployment `voice-gpt-5.4-nano`) on the same Azure resource and key, so it covers deployment-level failures and rate limits (separate quota) but not a regional outage; a deployment in another region would. Eval with nano alone (2026-10-16): **41/45** (mini: 44–45/45). No price errors and no wrong bookings (the guard refused one booking after nano made up its own read-back, then it read back correctly); weaker at repeating fixed lines verbatim (said a booking code raw, "HND-W8X8D", so `tts_node` now spells any raw `HND-XXXXX` like `speak_reference`), one 10:30→10:00 slot slip, one 51-word reply; median first token 1.10 s (mini ~0.9 s). Fine as an emergency fallback, not as the primary.
+- **Quota protection:** `MAX_CONCURRENT_CALLS=3` per worker process (LiveKit load function; at full load new calls go to another worker or wait), plus the frontend's sign-in and token rate limits (§12) and `MAX_CALL_MINUTES` (§16).
+- **Chosen-time hint:** the LLM twice confirmed a neighbouring slot ("saade teen" 15:30 read back as 15:00). `[booking_state]` now shows "caller's chosen time": the requested time when it was free, then whatever was last read back; cleared when that slot is taken. A hint, not a refusal: a first version refused a different time once, and broke slot changes and slot-taken recovery (it called a just-taken slot "free"). The read-back remains the safeguard.
+- **Hold line** (`agent/hold.py`): if the agent has been thinking for `HOLD_AFTER_S=2` (a slow tool or LLM), it says a short fixed line in the session language ("One moment please, let me check."; `prompts.HOLD_LINE`) and carries on; the reply follows when ready. It plays on a separate background audio track (`BackgroundAudioPlayer`), so it never enters the chat history or affects turn-taking, and it's cut if the reply starts or the caller speaks. The line is synthesised by Sarvam once per language per call (prefetched at call start and on a language switch; 0.6–0.8 s, resampled 22.05 → 48 kHz). **Hold music was tried and removed** after the 2026-10-16 browser test (product owner: it didn't work well on the call).
+- **"10-digit" read letter by letter:** in the same test TTS said "1 0 d i g i t". The prompt and tool notes no longer mention the number of digits, and `tts_node` splits a digit-hyphen-letter token ("10-digit" → "10 digit") as a backstop.
+
 ## 5. Data model
 
 Migrations in `data/migrations/`. Every table has RLS enabled with **no anon policies**. The backend connects as the `postgres` role through the pooler (which bypasses RLS); the browser never queries the DB directly.
@@ -158,44 +172,25 @@ The file `data/migrations/001_init.sql` is the source of truth; this is a summar
 
 Every table has RLS enabled with no anon policies. `tests/integration/test_schema.py` checks the tables, RLS, the `anon` role, and each constraint (each test rolls back).
 
-### `002_booking_functions.sql`
+### `002_booking_functions.sql` (applied 2026-10-15)
 
-```sql
-create or replace function public.reserve_slot(
-  p_slot_id bigint, p_name text, p_phone text, p_reference text,
-  p_room text, p_language text
-) returns bigint
-language plpgsql as $$
-declare v_id bigint;
-begin
-  update public.slots
-     set booked = booked + 1
-   where id = p_slot_id and booked < capacity and starts_at > now();
-  if not found then
-    raise exception 'SLOT_UNAVAILABLE' using errcode = 'P0001';
-  end if;
+`data/migrations/002_booking_functions.sql` is the source of truth. Summary:
+- **`reserve_slot(slot_id, name, phone, reference, room, language)`**: one `UPDATE slots SET booked = booked + 1 WHERE id = … AND booked < capacity AND starts_at > now()`, then the booking insert, in one transaction; raises `SLOT_UNAVAILABLE` if no row was updated. Concurrent callers block on the row lock and re-check the condition, so a slot can't be over-booked; a failed insert (same phone, same slot) undoes the increment.
+- **`cancel_booking(reference, phone)`**: needs both to match a confirmed booking; frees the capacity.
+- Both are `security invoker` with a fixed `search_path`; `EXECUTE` is revoked from `public`, `anon` and `authenticated`, so only the backend can call them (rule 9).
+- `slots.capacity` defaults to **2 demo bikes per model per slot** (product owner, 2026-10-15).
 
-  insert into public.bookings (reference, slot_id, customer_name, customer_phone, room_name, language)
-  values (p_reference, p_slot_id, p_name, p_phone, p_room, p_language)
-  returning id into v_id;
-  return v_id;
-end $$;
+`db/bookings.py` wraps them: `find_open_slots` (step 11's grid times filtered by real free capacity, nearest to the requested time; reasons `requested_time_full`, `fully_booked`, or the grid's own), `reserve` (reference `HND-XXXXX` from an alphabet without 0/O/1/I/L, spoken as "H N D, 7 K 3 Q 9"; errors `SLOT_UNAVAILABLE`, `DUPLICATE_BOOKING`), `cancel`, `capture_lead`, and `generate_slots` (used by `scripts/generate_slots.py --days 14`: on-sale models only, open days only, future times only; existing slots untouched). Generated on 2026-10-15: 6,931 slots (29 models × 14 days).
 
-create or replace function public.cancel_booking(p_reference text, p_phone text)
-returns boolean
-language plpgsql as $$
-declare v_slot bigint;
-begin
-  update public.bookings set status = 'CANCELLED'
-   where reference = p_reference and customer_phone = p_phone and status = 'CONFIRMED'
-   returning slot_id into v_slot;
-  if v_slot is null then return false; end if;
-  update public.slots set booked = booked - 1 where id = v_slot;
-  return true;
-end $$;
-```
+### `003_driving_licence.sql` (applied 2026-10-15)
 
-Both functions run in a single transaction, so the capacity check and the insert are atomic under concurrent callers.
+A test ride needs a valid two-wheeler driving licence (product owner, 2026-10-15). `bookings.licence_confirmed boolean not null` with a check constraint (`NOT VALID`, so rows from before the migration, never asked, are kept) that rejects any new booking without a confirmed licence; `reserve_slot` gains `p_licence_confirmed`. The agent asks first (§8), so the database check is the backstop; `bookings.reserve` also refuses with `LICENCE_REQUIRED` before calling the database.
+
+### `004_frontend_reader.sql` (applied 2026-10-15)
+
+A least-privilege role for the Next.js server routes (rule 9). `frontend_reader` can read only two views in schema `frontend` (not exposed by Supabase's REST API): `frontend.bookings` (today and upcoming, **masked in SQL**: "Ravi K.", "90xxx xx345", plus model, slot, language, licence, calendar status) and `frontend.catalog` (models and base prices). It has no rights on the `public` tables or functions, every transaction is read-only, statements time out after 3 s, and it may hold at most 3 connections. The migration creates it without a password; `scripts/set_frontend_db_password.py` sets a random one (only a SCRAM-SHA-256 verifier is sent to Postgres) and writes the role's URL to `frontend/.env.local`; re-run it to rotate. `tests/integration/test_frontend_reader.py` checks the masking and every refusal.
+
+**Concurrency test (Phase 3 exit criterion):** the Supabase session pooler caps clients at 15, so `tests/integration/test_bookings.py` opens 14 connections and fires 20 reservations on a capacity-1 slot at once (14 simultaneous, 6 queued): exactly 1 succeeds, 19 get `SLOT_UNAVAILABLE`. A deterministic companion test holds the row lock in one transaction and shows the second caller waits, then fails if the first commits and succeeds if it rolls back.
 
 ## 6. Catalog (hand-curated snapshot, not scraped)
 
@@ -245,21 +240,26 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 
 | Tool | Args | Behavior |
 |---|---|---|
-| `find_bike` | `query: str` | `db/catalog.py` (step 10). **Alias match, longest wins** (`domain/alias_match.py`: "Activa 125" doesn't also hit Activa 110's bare "activa"); if an alias covers only part of the query, a clearly better **trigram** match wins ("cb350 hinees" → H'ness); otherwise trigram fallback (similarity ≥ 0.4, top must beat the runner-up by 0.1, else up to 3 candidates to ask "which one?"). A bare family name ("activa", "hornet") also returns `similar_models` so the agent asks which one. Returns `domain/catalog_view.bike_summary()`: `{found, bike_id, name, segment, status, engine_cc, mileage_kmpl, specs{every verified spec}, features?, colours?, pitch, price_available, price_min_spoken, price_max_spoken?, price_note, variants:[{variant_name, spoken_price\|null}], on_road{available, city, from_spoken, cheapest_variant, variants[], breakdown{ex_showroom, rto, insurance, other[] (deductions marked)}, note}, similar_models?, booking_note?}`. Rows flagged `needs_review` never appear. When nothing matches, the note tells the agent to pivot to the closest Honda model if the caller named a competitor. |
+| `find_bike` | `query: str` | `db/catalog.py` (step 10). **Alias match, longest wins** (`domain/alias_match.py`: "Activa 125" doesn't also hit Activa 110's bare "activa"); if an alias covers only part of the query, a clearly better **trigram** match wins ("cb350 hinees" → H'ness); otherwise trigram fallback (similarity ≥ 0.4, top must beat the runner-up by 0.1, else up to 3 candidates to ask "which one?"). A bare family name ("activa", "hornet") also returns `similar_models` so the agent asks which one. Returns `domain/catalog_view.bike_summary()`: `{found, bike_id, name, segment, status, engine_cc, mileage_kmpl, specs{every verified spec}, features?, colours?, pitch, price_available, price_min_spoken, price_max_spoken?, price_note, variants:[{variant_name, spoken_price\|null}], on_road{available, city, from_spoken, cheapest_variant, variants[], breakdown{ex_showroom, rto, insurance, other[] (deductions marked)}, note}, similar_models?, booking_note?}`. Rows flagged `needs_review` never appear. When nothing matches and the caller named a competitor model, **the pivot is done in code** (`domain/competitors.py`, step 14): `closest_honda` carries that Honda's facts (Classic 350 → CB350 H'ness, Jupiter → Activa 125, Pulsar → SP160 …) with a note to say nothing about the other product; a brand alone gets "ask segment or budget"; anything else gets a callback offer. Competitor turns are also pre-fetched this way. |
 | `check_showroom_open` | `day_ref, time_24h?` | `day_ref` ∈ `today, tomorrow, day_after, mon…sun, YYYY-MM-DD`. Resolved in code (`datetime_resolve.showroom_status`, rule 5) against the showroom's open/close times and closed weekdays. Returns `{date, weekday, is_today, open_that_day, opens, closes, open_now?, time_asked?, open_at_time_asked?, note?}`; the LLM says the times naturally in the session language. |
 | `list_bikes` | `segment?: str, max_price_inr?: int` | Up to 4 models, cheapest first (one of the 17 segments; budget as a plain rupee number), each with `ex_showroom_from_spoken` and `on_road_from_spoken`. |
 | `compare_bikes` | `a: str, b: str` | Both resolved like `find_bike` (Honda only; unresolved → ask which). Returns key fields side by side: segment, engine, mileage, ex-showroom range, on-road from, and verified key specs. |
-| `start_booking` | `bike_id?: str` | Hands off to `BookingAgent` with chat context. |
-| `capture_lead` | `name?, phone?, interest?, reason` | Fallback path; writes to `leads`. |
+| `start_booking` | `model?, day_ref?, time_24h?` | Hands off to `BookingAgent` with chat context (step 13). The model is resolved by `Catalog.find_one`: a model's own name settles it even when a longer one contains it ("Shine 100" vs "Shine 100 DX"), a bare family name ("activa") leaves it unset so BookingAgent asks. If the caller already gave a day, **BookingAgent runs the slot search in code on entry** and replies from it (step 14: the LLM once claimed "6 baje theek rahega" without checking; this also saves one LLM call). Pre-booking and upcoming models aren't handed over: the note says to offer a callback lead. |
+| `capture_lead` | `reason, name?, phone?, interest?` | On both agents (shared base). Fallback path; writes to `leads` in the session language. An invalid phone is refused unless the phone tries are used up. |
+
+**Shared call state (step 13).** A handoff creates a new Agent object, so the session language, STT detection, caller turn count, chosen model and booking draft live in `agent/call_state.CallState`, shared by every agent of the call. `agent/base_agent.MultilingualAgent` holds what both agents do each turn: the language decision and tag in `llm_node`, TTS retargeting and streaming cleanup in `tts_node`. The receiving agent replies on entry (`generate_reply`), because a bare handoff tool doesn't reply itself.
 
 ### BookingAgent
 
 | Tool | Args | Behavior |
 |---|---|---|
-| `check_slots` | `bike_id, day_ref, time_24h?` | `day_ref` ∈ `today, tomorrow, day_after, mon…sun, YYYY-MM-DD`. Resolves via `datetime_resolve` (§10). Returns up to 3 nearest open slots as spoken strings in the session language ("kal shaam 5 baje", "நாளை மாலை 5 மணி"). |
-| `validate_phone` | `digits: str` | Normalizes (strips +91/0/spaces), validates `^[6-9]\d{9}$`, returns `readback` grouped 5+5. |
-| `book_test_ride` | `slot_id, name, phone, caller_confirmed: bool` | Rejects if `caller_confirmed` is false. When `DECISION_MODE=enforce`, also requires the decision-model confirmation gate to pass (§20.3). Calls `reserve_slot` (with the session language). On success, schedules the calendar mirror task and returns `{reference_spoken}` (spelled with gaps: "H N D, 7 K 3 Q 9"). On `SLOT_UNAVAILABLE`, returns the next 2 open slots. |
-| `cancel_test_ride` | `reference, phone` | Calls `cancel_booking`. |
+| `check_slots` | `day_ref, time_24h?, model?` | `day_ref` ∈ `today, tomorrow, day_after, mon…sun, YYYY-MM-DD`; `model` defaults to the one chosen. Resolves via `datetime_resolve` (§10) and `bookings.find_open_slots` (real free capacity). Returns `{model, slots:[{spoken, day_ref, time_24h}], exact_time_available, reason?, note?}`, up to 3 slots spoken in the session language ("kal shaam 5 baje", "நாளை மாலை 5 மணிக்கு"). Every returned slot is recorded as offered. |
+| `record_licence` | `has_valid_licence: bool` | The caller's answer to the licence question (migration 003). Refused in the caller turn the booking started (the question can't have been answered yet: step 14 eval). A "no" ends the booking with a callback offer (`capture_lead`, reason `no_licence`). |
+| `validate_phone` | `digits: str` | The caller's words unchanged (the LLM must not convert number words: it dropped a digit once). `phone.normalize` (strips +91/0/spaces, number words, native digits), validates `^[6-9]\d{9}$`, records the number as validated. Input with no digits or number words (e.g. the caller's name) isn't counted as a try. Two failures in a row: the note says to offer a callback lead. |
+| `confirm_details` | `day_ref, time_24h, name, phone` | Slots are named by day and time, not ids (step 14: the LLM mixed up opaque slot ids); code maps them to the slot offered for the chosen model. Builds the single read-back summary in code (`prompts.CONFIRM_SUMMARY`: model, spoken slot, name, phone digit by digit grouped 5+5, "9 8 7 6 5, 4 3 2 1 0", and "with a valid driving licence") and records it as pending. Refused unless the slot was offered, the licence confirmed and the phone validated. The LLM says `say` verbatim. |
+| `book_test_ride` | `day_ref, time_24h, name, phone, caller_confirmed: bool` | **Guarded in code (`domain/booking_guard.py`, rule 6):** refused unless `caller_confirmed` is true, the licence is confirmed, a summary was read back, **the yes comes in the very next caller turn after it** (not the same reply, and not after anything else was said: step 14 found the LLM saying "changed to 11:30" without a new read-back, then booking 11:00 on the caller's yes), and slot, name (case/spacing-insensitive) and normalized phone equal the read-back exactly. Caller turns are counted once each: a preemptive draft whose transcript changed doesn't count as a turn. When `DECISION_MODE=enforce`, also requires the decision-model confirmation gate to pass (§20.3). Calls `reserve_slot` (with the session language and room). On success returns `say` (`prompts.BOOKED_LINE`, with the reference spelled "H N D, 7 K 3 Q 9"); the calendar mirror task is added in Phase 4. On `SLOT_UNAVAILABLE`, clears the read-back and returns the 2 nearest open slots on that day; `DUPLICATE_BOOKING` is reported as such. |
+| `cancel_test_ride` | `reference, phone` | `bookings.normalize_reference` accepts "h n d 7 k 3 q 9", "7K3Q9", "HND-7K3Q9"; calls `cancel_booking` (needs the phone that booked). |
+| `capture_lead` | (shared, above) | |
 | `back_to_sales` | — | Hands back to `SalesAgent`. |
 
 ## 8. Conversation design (`agent/prompts.py`)
@@ -279,16 +279,23 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 
 **Unknown facts:** if a tool doesn't return the answer, say so and offer a callback. Never guess specs.
 
-**Competitor policy:** if a caller mentions another brand, acknowledge it neutrally, make **no claims** about the other product, and pivot to the closest Honda model with facts from `find_bike`. Example (Hinglish; `prompts.py` has one per language): "Achha, aap scooter dekh rahe hain — Honda mein Activa 125 is segment mein hai, uska mileage aur price bataun?" Do not refuse or lecture.
+**Competitor policy:** if a caller mentions another brand, acknowledge it neutrally, make **no claims** about the other product, and pivot to the closest Honda model with facts from `find_bike`. The closest Honda is picked in code (`domain/competitors.py`), not by the LLM. Example (Hinglish; `prompts.py` has one per language): "Achha, aap scooter dekh rahe hain — Honda mein Activa 125 is segment mein hai, uska mileage aur price bataun?" Do not refuse or lecture.
 
-**Out of scope** (service, insurance, unrelated topics): one-line deflection plus offer a callback lead.
+**Out of scope** (servicing and repairs, insurance renewal or claims, finance/EMI, unrelated topics): one-line deflection plus offer a callback lead. `domain/scope.py` detects these topics in code and skips the model pre-fetch for that turn (step 14: "when should my Activa be serviced?" got pre-fetched Activa facts and an "ask which Activa" note, and the LLM answered). Plain "insurance" stays in scope: it is part of the on-road breakdown.
+
+**Comparisons:** at most two differences; prices only when asked. When two models are pre-fetched and the turn has no price word (`scope.asks_about_price`), their price fields are left out of the facts (step 14: comparisons kept adding unasked prices, 55+ words).
 
 **Booking script** (BookingAgent), one field at a time:
-1. Model (pre-filled if known), then day and time, then offer up to 3 slots.
-2. Name, then read it back.
-3. Phone, then `validate_phone`, then read back grouped 5+5. Re-ask on failure; after 2 failed tries, offer `capture_lead`.
-4. A single confirmation summary in the session language ("Activa 125, kal shaam 5 baje, naam Ravi, number 98765 43210 — confirm karun?"). Call `book_test_ride(caller_confirmed=True)` only after an explicit yes.
-5. Speak the reference code slowly and say an SMS/WhatsApp would follow in production (not built in the POC).
+1. Model (pre-filled if known), then day and time, then the slot search: if the requested time is free, say so; otherwise give the reason and offer up to 3 slots.
+2. **Driving licence** (added 2026-10-15): "Do you have a valid two-wheeler driving licence?", then `record_licence`. No licence: no booking, offer a callback. Once per call.
+3. Name; the agent thanks the caller by name when asking for the phone.
+4. Phone, then `validate_phone`. Re-ask digit by digit on failure; after 2 failed tries, offer `capture_lead`. A valid number isn't read back separately: the summary in step 5 reads it back grouped 5+5 (one turn fewer, step 13).
+5. A single confirmation summary built in code by `confirm_details`, in the session language ("Honda Activa 125, kal shaam 5 baje, naam Ravi, number 9 8 7 6 5, 4 3 2 1 0, valid driving licence ke saath. Kya main yeh test ride confirm kar doon?"). `book_test_ride(caller_confirmed=True)` only after an explicit yes, enforced by `booking_guard` (§7). A correction ("make it 11:30") means a new summary.
+6. Speak the reference code slowly, remind them to bring the licence, and say an SMS would normally follow, not in this demo (`prompts.BOOKED_LINE`).
+
+Time words (`prompts.TIME_WORDS`, in both agents' prompts) include Hindi half and quarter hours: "saade X" = X:30, "sawa X" = X:15, "paune X" = (X−1):45, "dedh" = 1:30, "dhaai" = 2:30 (step 14: "subah saade das" became 09:30 when only the Sales prompt had the time words).
+
+**Verified 2026-10-15 (step 13, text mode, real LLM + DB; now part of `evals/run_text_evals.py`, §15):** 5/5 scenarios: English and Tamil happy paths, a too-short phone number then a slot change at the read-back, the slot taken between read-back and yes (alternatives offered, new read-back, booked), and cancellation by spoken reference. Every booking row matched the read-back. Eval bookings are cancelled and deleted afterwards.
 
 ## 9. Speech text transforms (`agent/text_transforms.py`)
 
@@ -298,6 +305,7 @@ Applied in an overridden `tts_node` as **streaming** transforms (chunk-in, chunk
 2. Backstop for currency: if a raw `₹` amount slips through, rewrite it with `format_inr_spoken(amount, session_language)`. Count it as a guardrail violation in metrics, because the prompt should have prevented it.
 3. Expand "km/l" → "kilometre per litre", "cc" → "C C".
 4. No truncation; over-length turns are only logged.
+5. Drop echoed internal lines: if the LLM repeats `[caller_language] …` or `[booking_state] …`, the tag and the rest of that line are removed and counted as a guardrail violation. The same filter runs on the LLM stream in `llm_node` (`InternalTagFilter`), so an echoed tag never reaches the chat history: in step 14 one echo was copied on every later turn of the call. The `tts_node` filter stays as the backstop.
 
 **`domain/pricing.format_inr_spoken(amount: int, lang: str) -> str`** is the single canonical formatter for every language:
 - Rounding (all languages): `< 1,00,000` → nearest 100; `≥ 1,00,000` → nearest 1,000. When rounding changed the value, prefix the language's "approximately" word: lagbhag / about / சுமார் / సుమారు / ഏകദേശം / ಸುಮಾರು.
@@ -315,7 +323,9 @@ Applied in an overridden `tts_node` as **streaming** transforms (chunk-in, chunk
 - If no time is given, it returns the next 3 open slots on that day.
 - The current IST date, weekday, and time are injected into the BookingAgent instructions each turn.
 
-`datetime_resolve.speak_slot(dt, now_ist, lang) -> str` renders a slot in the session language ("kal shaam 5 baje", "நாளை மாலை 5 மணி", "tomorrow 5 pm"). It is pure and unit-tested per language.
+`datetime_resolve.candidate_slots(day_ref, time_24h, now, showroom)` (step 11) resolves the day, drops slots starting within the 30-minute lead time, and returns up to 3 grid times nearest the request (or the first 3 of the day) with `exact` and a `reason` when the request couldn't be met as asked: `closed_day`, `outside_hours`, `not_on_slot_grid`, `too_soon_or_past`, `no_slots_left_today`. The grid runs every `slot_minutes` from opening, each slot ending by closing (demo: 10:00–18:30 starts). Capacity comes from the `slots` table (step 12).
+
+`datetime_resolve.speak_slot(dt, now, lang) -> str` says a slot relative to today in the session language: today/tomorrow/day-after words, a weekday name within the week, weekday + date beyond it; morning/afternoon/evening words; Hindi half hours as "saade 10", "dedh", "dhaai". Examples: "kal shaam 5 baje", "tomorrow at 5 pm", "நாளை மாலை 5 மணிக்கு", "రేపు సాయంత్రం 5 గంటలకు", "നാളെ വൈകുന്നേരം 5 മണിക്ക്", "ನಾಳೆ ಸಂಜೆ 5 ಗಂಟೆಗೆ". **Verified (2026-10-15)** by a TTS→STT round trip in all six languages. Half hours in Tamil, Telugu, Malayalam and Kannada are written as hour + minutes ("10 மணி 30 நிமிடத்துக்கு"), because TTS read "10:30 மணிக்கு" as "ten o'clock thirty minutes o'clock". Native-language words need a native-speaker review.
 
 `phone.normalize(raw) -> str | None` and `phone.readback(p) -> "98765 43210"`. Digits are language-neutral; TTS reads them in the session language. `normalize` also accepts native-script digits (e.g. Devanagari `९८७६५…`).
 
@@ -324,15 +334,27 @@ Applied in an overridden `tts_node` as **streaming** transforms (chunk-in, chunk
 - Create a dedicated calendar ("Honda Demo – Test Rides") in a normal Google account, and share it with the service account email with "Make changes to events". Put its ID in `GOOGLE_CALENDAR_ID`. **Do not use `primary`**; that is the service account's own invisible calendar.
 - Do not add attendees (that requires domain-wide delegation). Put customer details in the event description.
 - After `reserve_slot` commits, a background task creates the event (3 retries with backoff) and updates `calendar_event_id` / `calendar_sync_status`. A failure sets `FAILED` and is never spoken to the caller. `scripts/retry_calendar_sync.py` re-pushes `PENDING`/`FAILED` rows. Cancellation deletes the event the same way.
+
+**Built (Phase 4, 2026-10-15):**
+- `integrations/gcalendar.py`: async REST client (aiohttp) for Calendar API v3 `events.insert/get/delete`; the service-account token is signed by `google-auth` (pinned 2.43.0, the only new dependency) and refreshed in a thread about hourly. 429/5xx/network errors are retryable; other 4xx (e.g. 403 not shared) fail at once.
+- `domain/calendar_event.py`: the event for a booking. **Its id is derived from the booking reference** (base32hex), so a retried insert gets 409 and counts as done: no duplicate events. Summary "Test ride: Honda Activa 125 (Ravi)", IST start/end (slot length from the showroom), location, and a description with booking code, model, name, language and licence. **The phone is masked** (`xxxxxxx210`; full number only in the database), per §17 data minimisation; change `build_event` if showroom staff need it in the calendar.
+- `db/calendar_sync.CalendarSync`: `schedule(booking_id)` runs the sync in the background (the caller's turn never waits for Google); one sync at a time per booking; a confirmed booking gets an event, a cancelled one loses it. Status writes are conditional on the booking's status at that moment, so a cancel that races an in-flight insert ends with the event deleted. `drain()` runs at call end (job shutdown callback); anything unfinished stays `PENDING`.
+- Cancelling marks the row `PENDING` (`bookings.mark_calendar_pending`) and schedules the delete. With `CALENDAR_SYNC=off` nothing is mirrored and rows stay `PENDING` for the retry script.
+- `scripts/check_calendar.py` checks the setup (create, read back, delete a test event); `evals/calendar_e2e.py` is the Phase 4 exit check against the real calendar.
+- Setup: a Google Cloud project with the Calendar API enabled (free, no billing account), a service account with a JSON key in `secrets/` (git-ignored, `chmod 600`), and a calendar in a normal Google account shared with the service account's email with **Make changes to events** ("See all event details" gives 403 "You need to have writer access").
 - No free/busy check. Slot availability comes only from the `slots` table.
 
 ## 12. Frontend (`frontend/`)
 
-- Start from LiveKit's **agent-starter-react** template. It provides the visualizer, control bar, transcription, and connection handling. Customize the branding and add a panel.
-- `app/api/connection-details/route.ts` (or the template's equivalent): issues a token with a room configuration that **explicitly dispatches** `agent_name="honda-sales"`. Protect it with a demo passcode (`DEMO_PASSCODE`) and a short token TTL.
-- `app/api/bookings/route.ts`: server-side query (server-only env vars) returning today's and upcoming bookings with names masked ("Ravi K.", "98xxx xx210") and the booking language. The panel polls every 5 s.
-- `app/api/catalog/route.ts`: models and base ex-showroom prices (₹ numerals) for a side panel.
+- Start from LiveKit's **agent-starter-react** template (MIT; commit `c5d78a6`, 2026-09-15, its lockfile kept, Next.js 15.5). It provides the visualizer, control bar, transcription, and connection handling. Branding and panels are ours; the template's sandbox-token and LiveKit-homepage-agent fallbacks were removed.
+- **Sign-in:** `POST /api/login {passcode}` checks `DEMO_PASSCODE` in constant time (rate limit: 5 a minute per IP) and sets `hv_session`: an HS256 JWT signed with `SESSION_SECRET`, 2 h, `HttpOnly`, `SameSite=Strict`, `Secure` in production. The page renders the passcode screen (with the privacy notice) until the cookie is valid; `POST /api/logout` clears it. Every API route below requires the cookie.
+- `app/api/token/route.ts` (the template's path): replaces the template route, which had no authentication and let the browser choose the room configuration, i.e. which agent is dispatched. **The request body is ignored**; the server picks a random room (`honda-<uuid>`) and identity, grants join + subscribe + **microphone only**, no data publishing, no admin, a **10-minute** token, and a room configuration that **explicitly dispatches** `AGENT_NAME` (`honda-sales`). Rate limit: 10 a minute per IP.
+- `app/api/bookings/route.ts`: reads `frontend.bookings` (already masked by the database) through the `frontend_reader` role; the panel polls every 5 s (paused in a background tab). `app/api/catalog/route.ts`: models and ex-showroom prices from `frontend.catalog`.
+- **Database TLS:** node-postgres connected in cleartext by default (found in Phase 5); `lib/server/db.ts` uses TLS with Supabase's root CA (`certs/`, via `DATABASE_CA_CERT`), verifying the chain and host name.
+- **Headers:** `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy: microphone=(self), camera=(), geolocation=()`, no `X-Powered-By`.
+- Voice only: the caller can't send text or data (chat input off); the transcript is always shown (one change in the template's session view). Calls end after `MAX_CALL_MINUTES` (worker, §16).
 - Transcripts come from the agent session's built-in transcription; no custom data channel is needed.
+- Tests: `cd frontend && corepack pnpm@9.15.9 test` (Vitest): passcode, session tampering, rate limits, the token's claims (including that a hostile body can't change room, identity or agent), and sign-in on every data route. Verified against the real services on 2026-10-15 with a production build; the client bundle contains none of the server secrets.
 
 ## 13. Configuration
 
@@ -423,17 +445,33 @@ Ordered to remove the biggest risk (voice quality and latency) first.
 
 **Phase 3 — Booking.** Migration 002, slot generation, BookingAgent with handoff, date/phone domain modules, read-back flow, lead fallback, cancellation.
 *Exit:* concurrency test (20 parallel `reserve_slot` calls on a capacity-1 slot leads to exactly 1 success); booking evals pass.
+**Status (2026-10-15): exit criteria met.** Concurrency test passes (§5); `evals/run_text_evals.py` passes all booking, phone, slot-taken and cancellation scenarios, 45/45 overall on the final clean runs (§15). Added beyond the plan: driving-licence question (migration 003). Still open from Phase 1: a voice confirmation of the language-switch fix. The native-speaker review of the Tamil, Telugu, Malayalam and Kannada lines was waived for the POC by the product owner (2026-10-16: "fine for now").
 
 **Phase 4 — Calendar mirror.** Shared calendar, background sync, retry script.
 *Exit:* a booking appears in the shared calendar within 10 s, and a simulated calendar outage leaves the booking confirmed with status `FAILED` until the retry script fixes it.
+**Status (2026-10-15): exit criteria met** (`evals/calendar_e2e.py`, real calendar): the event was readable 1.7 s after the booking committed; with the calendar unreachable the booking stayed `CONFIRMED` with `FAILED`, and `scripts/retry_calendar_sync.py` then synced it; cancelling removed the event. Integration tests with a fake calendar cover retries (4 tries), no retry on 403, cancel, and cancel racing an insert.
 
 **Phase 5 — Frontend.** Starter template, token dispatch with passcode, bookings and catalog panels.
 *Exit:* a full call from the browser books a ride that appears in the panel within 5 s.
+**Status (2026-10-15): built and tested; the browser call (exit) is pending the product owner's test.** Added at the product owner's request: rate limits on sign-in and tokens, a maximum call length, the panels behind the sign-in cookie, and the read-only masked database role (migration 004). Found and fixed on the way: node-postgres connected to Supabase in cleartext, and the Python backend encrypted without verifying the certificate; both now verify against Supabase's root CA (`certs/`).
 
 **Phase 6 — Evals and hardening.** The full eval suite, a latency report, and a demo script.
 *Exit:* all §1 targets met; README with setup steps.
+**Status (2026-10-16): built; exit pending five live demo runs (§1 says targets are met on the eval set and in five live runs).** Delivered: `scripts/latency_report.py`, `scripts/check_all.sh` (full run: all tests pass, conversations 44/46 = 96 %), `README.md` (setup from scratch, privacy notice), [DEMO.md](DEMO.md) + `scenarios/demo.yaml` (passed 3/3 after fixes), the fixed-tool-reply speed-up, and two measurement fixes (turn records, discarded-draft language decisions). Where each §1 target stands:
 
-**Phase 7 — Decision layer, self-hosted Laya (§20, §23).** `DecisionModel` interface + Laya client (local `laya-serve`) + LLM fallback; migration 003; parallel per-turn signals; confirmation gate. Run in `shadow` mode across the full eval suite and demo calls, then switch to `enforce` only for gates that clear their targets.
+| §1 target | Evidence so far | Status |
+|---|---|---|
+| TTFA p50 ≤ 2.0 s / p90 ≤ 3.0 s | 2 browser calls before the speed-up: p50 1.65 s, p90 4.26 s (booking turns; one Azure stall of 25.7 s). Booking turns since cut by ~1.3 s each (read-back 3.55 → 2.24 s, booked 2.54 → 1.27 s in evals) | p50 met; p90 to re-measure on the live runs |
+| Model names from speech ≥ 90 % (≥ 80 % per language) | Phase 2: 9/9 on the recorded English + Tamil clips | Met for English and Tamil; Hindi, Telugu, Malayalam, Kannada recordings not available |
+| Reply language matches ≥ 95 % | Evals check script on every turn: 1 slip in 46 conversations (one Kannada word in a Malayalam reply). Live figure (69 %) was a filing bug in the turn records, fixed | Evals met; live to re-measure |
+| Scripted bookings completed ≥ 80 % | All booking, phone, slot-taken, Indian-language and demo bookings passed in the final runs | Met |
+| Wrong phone/date/model persisted: 0 | Every eval booking row is checked against what the caller agreed; code guard on every booking | Met (0) |
+| Spoken prices differing from catalog: 0 | Price check on every eval turn (tool output or pre-fetched facts) | Met (0) |
+| Turns over ~40 words ≤ 10 % | Evals: a few 41–50-word warnings per run; live 2/17 = 12 % before the booked line was shortened | To re-measure on the live runs |
+
+Known LLM variance (not fixed, reported): occasional 41–50-word replies, rare neighbouring-slot confusion (the read-back exposes it), rare script slips in Indian languages.
+
+**Phase 7 — Decision layer, self-hosted Laya (§20, §23).** `DecisionModel` interface + Laya client (local `laya-serve`) + LLM fallback; migration 005; parallel per-turn signals; confirmation gate. Run in `shadow` mode across the full eval suite and demo calls, then switch to `enforce` only for gates that clear their targets.
 *Exit:* §20.5 targets met on the labelled set; p50 TTFA unchanged (±50 ms) vs Phase 6 on non-confirmation turns.
 
 **Phase 8 — LangGraph orchestration, A/B (§21).** Build the graph behind `ORCHESTRATOR=langgraph` without removing the native path. Run the latency A/B across three router configs.
@@ -462,23 +500,31 @@ Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya, which is op
 
 **Integration tests (`-m integration`, Supabase test project):**
 - `test_reserve_slot.py`: capacity, the concurrency race, past slots, double-booking by the same phone, cancellation restoring capacity.
-- `test_calendar_sync.py`: mocked Google API, retry and failure paths.
+- `test_calendar_sync.py`: fake calendar against the real database: sync, outage then retry, permanent error not retried, cancel, cancel racing an insert. `tests/test_gcalendar_client.py` covers the client's status handling offline.
 
 **Conversation evals (`evals/`):**
-- `scenarios/*.yaml`: 35 scripted text conversations: the original 25 (price inquiry ×5, comparison ×3, competitor mention ×3, booking happy path ×5, booking with a misheard phone ×3, slot taken ×2, cancellation ×2, out of scope ×2) in Hinglish/English, plus a price inquiry and a booking happy path in each of Tamil, Telugu, Malayalam and Kannada (×8), plus 2 mid-call language switches. Each lists expected tool calls and assertions: the spoken price equals the catalog value in that language, no booking without confirmation, turn length, and reply language/script matches the session language.
-- `run_text_evals.py` drives the agents through LiveKit's text/testing interface, with no audio.
+- `scenarios/*.yaml` (step 14): **45 scripted text conversations** in 11 files: price ×6, comparison ×3, competitor ×3, booking happy path ×5, misheard/invalid phone ×3, slot taken ×2, cancellation ×2, out of scope ×3, language (intro, switches, explicit request) ×4, Tamil/Telugu/Malayalam/Kannada price + booking ×8, other paths ×6 (hours, budget list, one spec, upcoming model, no licence, price question mid-booking). Each turn gives the caller's words and the STT language; expectations are per turn (`tools`, `no_tools`, `slots_checked`, `says_any/all/none`, `price`, `language`, `intro`, `honda_pivot`, `max_words`) and per scenario (`booked`, `cancelled`, `book_errors`, `leads`, and the stored booking row: model, time, name, phone, language, licence). Hooks simulate other callers taking the slot; cancellations use a booking made before the call.
+- `scenarios/demo.yaml` (Phase 6): the live demo script ([DEMO.md](DEMO.md)) as one conversation, so it's re-proven by every pre-demo check. 46 scenarios in total.
+- **Pre-demo check:** `scripts/check_all.sh` runs lint, unit, database and frontend tests and the conversations (`--min-pass 0.95`: LLM variance), and prints a pass/fail summary; `SKIP_EVALS=1` for the quick version.
+- `run_text_evals.py` runs them against the real LLM and database through `session.run()`, with no audio, and checks every turn for: reply language and script, ≤ 40 words (41–50 is a warning; a scenario can allow more, e.g. a full on-road breakdown), prices verbatim from tool output (a Tamil case ending on the rupee word is accepted), echoed tags, booking only on a turn where the caller said yes, licence recorded only after a yes. Bookings use room `eval-text` and are cancelled and deleted afterwards; leads with eval numbers (90000xxxxx) too. Flags: `--only`, `--tag`, `--deployment/--model`. It replaces the Phase 1 and step 13 one-off scripts.
+- **Results (2026-10-15, `gpt-5.4-mini`):** the first run passed 34/42 and exposed real defects, fixed in code where possible (handoff slot search, slot ids → day/time, read-back must directly precede the yes, licence turn rule, competitor pivots, out-of-scope detection, tag filter in `llm_node`, time words in both prompts, script rule per language, comparison prices). Final five runs: **45/45, 41/45 (before the last fixes), 45/45, 44/45, 44/45**. The last two failures were the guard doing its job (a booking refused because the LLM skipped a new read-back; a licence "yes" attempted on the handoff turn and refused); the scenario and the check were adjusted, not the guard. First-LLM-call TTFT p50 ≈ 0.8 s, p90 ≈ 1.0 s. Residual LLM variance: replies of 41–50 words appear in a few turns per run.
 - `evals/recordings/`: 30 audio clips across the six languages for the STT and model-name check (git-ignored; share them separately).
 
 ## 16. Observability
 
 - Per turn, log: room, agent, detected language + probability, session language (and switches), STT final latency, LLM TTFT, TTS TTFB, end-to-end TTFA, tool calls with duration, word count, and guardrail violations (including reply-script mismatches).
-- `scripts/latency_report.py` aggregates p50/p90 from the logs for the Phase 6 report.
+- `scripts/latency_report.py` (Phase 6) reports TTFA p50 / p90 / max overall, by turn type (reply from code, LLM without tools, catalog tool, booking/handoff) and by reply language, with end-of-turn, LLM first token and TTS first byte, plus turns without a reply, over-length replies, reply-language match and guardrail violations, each against the §1 targets. Filters: `--since`, `--room honda-` (browser calls), `--last N`; `--md` writes a file.
+- **Turn records (fixed in Phase 6):** a reply's language and words are now filed under the turn in which the reply *started* (before, a reply that ended after the caller's next turn began was filed under the next turn, which made the 2026-10-16 call show 69 % reply-language match). A turn's line is written once its reply has finished, and carries an `at` timestamp.
 - Mask phone numbers in logs (last 3 digits only).
+- **During development the worker writes its INFO log to `logs/worker.log`** (`LOG_FILE`; JSON lines with room and job ids, 10 MB x 5, git-ignored), so a problem call can be read back in full. DEBUG isn't written: LiveKit logs tool arguments, which can hold phone numbers, at DEBUG. Set `LOG_FILE=` empty when development is complete.
+- **Call length:** `MAX_CALL_MINUTES=10`: the agent says a goodbye line in the session language and closes the room (cost limit).
 
 ## 17. Privacy
 
-- There is no spoken recording-consent step (removed 2026-10-15 at the product owner's request), and agent sessions are not recorded (`record=False`). **Open item:** name and phone are still personal data under India's DPDP Act, so show a short privacy notice in the frontend before a call starts, and in the README.
-- Collect only name, phone, and preferred slot. Mask phone numbers in logs and the UI.
+- There is no spoken recording-consent step (removed 2026-10-15 at the product owner's request), and agent sessions are not recorded (`record=False`). Name and phone are personal data under India's DPDP Act: the frontend shows a privacy notice on the sign-in screen and before a call (what is processed live and by whom, what a booking stores, the masked calendar copy). **Still open:** the same notice in the README.
+- Collect only name, phone, preferred slot and the licence answer. Mask phone numbers in logs, the calendar and the UI; the frontend only ever receives masked values (the `frontend_reader` role can't read the raw columns).
+- **Data in transit:** browser audio is encrypted by WebRTC (DTLS-SRTP), the API runs over HTTPS in production, and both the worker and the Next.js server verify the database's TLS certificate against Supabase's root CA (`certs/supabase-prod-ca-2021.crt`, `DATABASE_CA_CERT`).
+- **Processors:** Sarvam (audio), Azure OpenAI (transcripts; content filter on), Google Calendar (masked booking copy), LiveKit Cloud (media relay), Supabase (database).
 - If recordings are enabled, store them for at most 30 days in the POC and document this in the README. (India's DPDP Act applies to the personal data collected.)
 
 ## 18. Project structure
@@ -497,13 +543,17 @@ honda-voice-poc/
 │   ├── catalog/                # one JSON per model + _index.json
 │   └── migrations/
 │       ├── 001_init.sql
-│       └── 002_booking_functions.sql
+│       ├── 002_booking_functions.sql
+│       ├── 003_driving_licence.sql
+│       └── 004_frontend_reader.sql
 ├── scripts/
 │   ├── build_catalog.py        # regenerates data/catalog/
 │   ├── apply_migrations.py     # applies data/migrations in order, records them
 │   ├── seed_catalog.py         # validate + upsert the catalog (wraps db/catalog_seed.py)
 │   ├── generate_slots.py
 │   ├── retry_calendar_sync.py
+│   ├── check_calendar.py       # calendar setup check: create, read, delete a test event
+│   ├── set_frontend_db_password.py  # password for the read-only frontend role -> frontend/.env.local
 │   └── latency_report.py
 ├── src/honda_voice/
 │   ├── __init__.py
@@ -512,14 +562,19 @@ honda-voice-poc/
 │   │   ├── pool.py               # asyncpg pool (session pooler)
 │   │   ├── catalog.py            # find/list/compare queries
 │   │   ├── catalog_seed.py       # catalog JSON → validated rows → transactional upsert
-│   │   └── bookings.py           # reserve/cancel/lead/slot queries
+│   │   ├── bookings.py           # reserve/cancel/lead/slot queries
+│   │   └── calendar_sync.py      # background calendar mirror, retries, status
 │   ├── domain/
 │   │   ├── pricing.py            # format_inr_spoken(amount, lang)
 │   │   ├── language.py           # session-language rule, per-language words (§4.1)
 │   │   ├── datetime_resolve.py   # resolve + speak_slot(lang)
-│   │   └── phone.py
+│   │   ├── phone.py              # normalize, 5+5 read-back, mask
+│   │   ├── booking_guard.py      # read-back-before-write rules (rule 6)
+│   │   ├── calendar_event.py     # booking -> calendar event (stable id, masked phone)
+│   │   ├── competitors.py        # competitor model -> closest Honda (rule 11)
+│   │   └── scope.py              # out-of-scope topics, price questions
 │   ├── integrations/
-│   │   └── gcalendar.py          # create/delete event, retry
+│   │   └── gcalendar.py          # Calendar API client: create/get/delete event
 │   ├── decisions/                # Phase 7
 │   │   ├── base.py               # DecisionModel protocol (choice / score / probability)
 │   │   ├── laya_client.py        # Laya (local laya-serve) implementation, timeout (§23)
@@ -535,17 +590,24 @@ honda-voice-poc/
 │   │   └── auth.py               # service-token check
 │   └── agent/
 │       ├── prompts.py
+│       ├── call_state.py         # per-call state shared across handoffs
+│       ├── base_agent.py         # language, tts_node cleanup, capture_lead (both agents)
 │       ├── sales_agent.py
 │       ├── booking_agent.py
 │       ├── text_transforms.py    # streaming tts_node transforms
 │       ├── metrics.py
 │       └── worker.py             # entrypoint, AgentSession config
-├── frontend/                     # from LiveKit agent-starter-react
-│   └── app/api/{connection-details,bookings,catalog}/route.ts
+├── certs/                        # public CA certificate for verified DB TLS (not a secret)
+├── frontend/                     # from LiveKit agent-starter-react (MIT)
+│   ├── app/api/{login,logout,token,bookings,catalog}/route.ts
+│   ├── lib/server/               # config, passcode, session cookie, rate limits, read-only DB
+│   ├── components/app/           # sign-in, privacy notice, side panel (bookings, models)
+│   └── tests/                    # Vitest: auth, token claims, rate limits
 ├── evals/
 │   ├── scenarios/*.yaml
 │   ├── recordings/               # git-ignored
-│   └── run_text_evals.py
+│   ├── run_text_evals.py
+│   └── calendar_e2e.py           # Phase 4 exit check against the real calendar
 └── tests/
 ```
 
@@ -566,6 +628,9 @@ honda-voice-poc/
 | Laya is young (0.4.x, frequent releases) | API or behaviour changes | Pin `laya==0.4.7`; `DecisionModel` interface with LLM fallback; gate fails safe to re-confirmation |
 | LangGraph adds per-turn latency | Slower agent | Phase 8 A/B; non-LLM router; no buffering nodes |
 | Laya needs the local machine's GPU | Slower or unavailable gate on other machines | CPU fallback (~0.2–0.5 s per call per README); timeout + fail-safe; provider switchable to `llm_fallback` |
+| In-memory rate limits (sign-in, tokens) | With several Next.js instances each keeps its own counters, so limits multiply; `X-Forwarded-For` is trusted for the client IP | Fine for one instance behind a trusted proxy; use a shared store (e.g. Redis) and the host's real-IP header before scaling |
+| Shared demo passcode | Anyone who has it can start calls (cost) and see the masked bookings panel | Rotate after demos; real login (or phone-number calling) for production; tokens and calls are capped (10 a minute, 10-minute calls) |
+| Supabase session pooler allows 15 clients | Connection errors with several workers or the FastAPI service | Worker pool `max_size=5`; move to the transaction pooler (port 6543, `statement_cache_size=0`) or a paid tier before scaling out |
 | A second backend service (FastAPI) | More to deploy and keep in sync | Optional; shared `db/` + `domain/` modules; only behind §22.1 triggers |
 
 ---
@@ -611,7 +676,7 @@ All questions for one turn go in **one** request.
 
 `DECISION_MODE=shadow`: run every question, log the results, and change nothing. `off`: no calls.
 
-### 20.4 Storage — `003_call_signals.sql`
+### 20.4 Storage — `005_call_signals.sql`
 
 ```sql
 create table public.call_signals (

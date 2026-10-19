@@ -1,0 +1,40 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="06 Security boundaries" name="06 Security boundaries">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" page="1" pageWidth="1600" pageHeight="1100">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pub" value="Public internet / browser&lt;br&gt;sees: passcode form, masked panel data,&lt;br&gt;one-room mic-only LiveKit token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="next" value="Next.js server (secrets: LiveKit API secret,&lt;br&gt;SESSION_SECRET, frontend_reader password)&lt;br&gt;rate limits, security headers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="380" y="40" width="320" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ro" value="frontend_reader role&lt;br&gt;SELECT on 2 masked views only,&lt;br&gt;read-only, 3 connections" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="380" y="180" width="320" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="Agent worker (secrets: .env)&lt;br&gt;LLM sees no credentials, typed tools only,&lt;br&gt;code guard for bookings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="760" y="40" width="320" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="pg" value="postgres role (backend only)&lt;br&gt;RLS on, anon/authenticated no access,&lt;br&gt;reserve/cancel EXECUTE revoked from API roles" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="760" y="180" width="320" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="third" value="Third parties: Sarvam (audio), Azure (text),&lt;br&gt;Google (masked booking), LiveKit (media)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="380" y="320" width="320" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="HTTPS + session cookie" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="pub" target="next">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="TLS, CA-verified" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="next" target="ro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="TLS, CA-verified" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="worker" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;dashed=1;" edge="1" parent="1" source="worker" target="third">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

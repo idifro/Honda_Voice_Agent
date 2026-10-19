@@ -6,10 +6,8 @@ Run: `uv run python scripts/seed_catalog.py` (`--dry-run` validates and prints t
 import argparse
 import asyncio
 
-import asyncpg
-
-from honda_voice.config import get_settings
 from honda_voice.db.catalog_seed import build_rows, seed
+from honda_voice.db.pool import connect
 
 
 async def main() -> None:
@@ -23,7 +21,7 @@ async def main() -> None:
         f"{len(rows.on_road)} on-road prices"
     )
     if not args.dry_run:
-        conn = await asyncpg.connect(get_settings().database_url.get_secret_value())
+        conn = await connect()
         try:
             counts = await seed(conn, rows)
         finally:

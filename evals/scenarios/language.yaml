@@ -1,0 +1,40 @@
+# Opening and language switches (SPEC §4.1, §8): code decides the session language.
+- name: "language: picks Tamil at the greeting, gets the intro"
+  first_turn: true
+  start_language: ta-IN
+  turns:
+    - say: "தமிழ்"
+      expect: {intro: true, no_tools: [find_bike, start_booking]}
+
+- name: "language: Tamil to English in sales, one-word answer doesn't switch"
+  start_language: ta-IN
+  turns:
+    - say: "Activa 125 விலை என்ன?"
+      expect: {price: true}
+    - say: "ok"
+      lang: en-IN
+      expect: {language: ta-IN}
+    - say: "What is the mileage of the Shine 100?"
+      expect: {language: en-IN}
+
+- name: "language: English to Hindi in the middle of a booking"
+  turns:
+    - say: "Book a test ride for the Livo tomorrow at 2 pm"
+      expect: {tools: [start_booking]}
+    - say: "Hindi mein baat kariye please"
+      expect: {language: hi-IN}
+    - say: "Haan, licence hai"
+    - say: "Mera naam Deepak hai"
+    - say: "9000010101"
+      expect: {says_any: ["naam Deepak"]}
+    - say: "Haan, confirm karo"
+  expect:
+    booked: 1
+    booking: {model: livo, time: "14:00", name: Deepak, language: hi-IN}
+
+- name: "language: explicit request for Telugu"
+  start_language: en-IN
+  turns:
+    - say: "Telugu lo cheppandi, Shine 100 price entha?"
+      lang: en-IN
+      expect: {language: te-IN, price: true}

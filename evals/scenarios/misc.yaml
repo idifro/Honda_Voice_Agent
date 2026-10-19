@@ -1,0 +1,42 @@
+# Other sales and booking paths: hours, budget list, one spec, upcoming model, no licence, back to sales.
+- name: "misc: showroom open tomorrow 6 pm (English)"
+  turns:
+    - say: "Is the showroom open tomorrow at 6 pm?"
+      expect: {tools: [check_showroom_open]}
+
+- name: "misc: scooters under 1 lakh (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Ek lakh ke andar koi scooter batao"
+      expect: {tools: [list_bikes]}
+
+- name: "misc: one spec only (English)"
+  turns:
+    - say: "What is the ground clearance of the Activa 125?"
+      # one fact only: offering mileage or price as a follow-up is fine, stating them isn't
+      expect: {says_any: ["mm", "millimetre", "millimeter"], says_none: ["kilometre per litre", "rupees"]}
+
+- name: "misc: upcoming model can't be test-ridden (English)"
+  turns:
+    - say: "I want to book a test ride for the Rebel 500"
+      expect: {no_tools: [check_slots, book_test_ride], says_any: ["call", "callback", "launch"]}
+  expect:
+    booked: 0
+
+- name: "misc: no driving licence, no booking (English)"
+  turns:
+    - say: "Can I book a test ride for the Shine 100 tomorrow at 12?"
+    - say: "No, I don't have a licence yet"
+      expect: {no_tools: [confirm_details, book_test_ride]}
+    - say: "Sure, call me back. I'm Ramesh, 9000016161"
+  expect:
+    booked: 0
+    tools: [capture_lead]
+    leads: 1
+
+- name: "misc: price question during booking goes back to sales (English)"
+  turns:
+    - say: "Book a test ride for the NX200 tomorrow at 4 pm"
+      expect: {tools: [start_booking]}
+    - say: "Actually, what's the ex-showroom price of the NX200 first?"
+      expect: {price: true}

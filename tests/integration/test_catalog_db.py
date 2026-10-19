@@ -5,18 +5,17 @@ Run: `uv run pytest -q -m integration`.
 
 import time
 
-import asyncpg
 import pytest
 
-from honda_voice.config import get_settings
 from honda_voice.db.catalog import Catalog
+from honda_voice.db.pool import create_pool
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
 async def catalog():
-    pool = await asyncpg.create_pool(get_settings().database_url.get_secret_value(), min_size=1, max_size=2)
+    pool = await create_pool(min_size=1, max_size=2)
     try:
         yield await Catalog.load(pool)
     finally:
@@ -75,7 +74,7 @@ async def test_trigram_lookup_is_fast(catalog):
 
 
 async def test_background_load():
-    pool = await asyncpg.create_pool(get_settings().database_url.get_secret_value(), min_size=1, max_size=2)
+    pool = await create_pool(min_size=1, max_size=2)
     try:
         cat = Catalog.load_in_background(pool)
         assert cat.mentioned("Activa 125") == []  # not loaded yet: pre-fetch simply skips

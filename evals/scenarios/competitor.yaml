@@ -1,0 +1,16 @@
+# Competitor mentions (×3): no claims about the other product, pivot to the closest Honda (rule 11).
+- name: "competitor: Bajaj Pulsar mileage (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Bajaj Pulsar kaisi bike hai? Uska mileage kitna hai?"
+      expect: {honda_pivot: true}
+
+- name: "competitor: TVS Jupiter vs Activa (English)"
+  turns:
+    - say: "Is the TVS Jupiter better than the Activa?"
+      expect: {honda_pivot: true, says_none: ["Jupiter is better", "Jupiter has better"]}
+
+- name: "competitor: Royal Enfield Classic 350 price (English)"
+  turns:
+    - say: "How much does the Royal Enfield Classic 350 cost?"
+      expect: {honda_pivot: true, says_any: ["CB350"]}

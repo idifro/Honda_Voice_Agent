@@ -2,7 +2,12 @@ import random
 
 import pytest
 
-from honda_voice.agent.text_transforms import SpeechCleaner, TransformStats, clean_text_stream
+from honda_voice.agent.text_transforms import (
+    InternalTagFilter,
+    SpeechCleaner,
+    TransformStats,
+    clean_text_stream,
+)
 
 
 def run(text: str, lang: str = "hi-IN", chunks: list[str] | None = None) -> tuple[str, TransformStats]:
@@ -134,3 +139,41 @@ async def test_async_stream_adapter():
     assert len(pieces) > 1  # streamed, not one final blob
     assert spoken("".join(pieces)) == "Shine 100 ka price lagbhag 65 hazaar 6 sau rupaye hai"
     assert len(stats.violations) == 1
+
+
+def test_echoed_internal_tag_dropped_to_line_end_in_any_chunking():
+    text = "Shall I confirm this test ride? [caller_language] English. Reply only in English.\nThanks"
+    for size in (1, 3, 7, len(text)):
+        c = SpeechCleaner("en-IN")
+        out = "".join(c.feed(text[i : i + size]) for i in range(0, len(text), size)) + c.flush()
+        # the space before the tag may already have been streamed out: harmless for TTS
+        assert out.replace(" \n", "\n") == "Shall I confirm this test ride?\nThanks"
+        assert c.stats.violations == ["internal tag spoken: [caller_language]"]
+
+
+def test_llm_stream_tag_filter_keeps_history_clean():
+    text = "Mobile number batayein. [caller_language] Hindi. Reply only in Hindi.\nAur kuch?"
+    for size in (1, 4, len(text)):
+        f = InternalTagFilter()
+        out = "".join(f.feed(text[i : i + size]) for i in range(0, len(text), size)) + f.flush()
+        assert out.replace(" \n", "\n") == "Mobile number batayein.\nAur kuch?"
+        assert f.removed == ["internal tag spoken: [caller_language]"]
+
+
+def test_number_hyphen_word_split_so_tts_reads_it():
+    for size in (1, 4, 100):
+        text = "Please share your 10-digit mobile number. CB350-RS. Phone 98765-43210, code HND-7K3Q9."
+        c = SpeechCleaner("en-IN")
+        out = "".join(c.feed(text[i : i + size]) for i in range(0, len(text), size)) + c.flush()
+        assert "10 digit" in out and "10-digit" not in out
+        assert "98765-43210" in out  # digits on both sides: untouched
+
+
+def test_raw_booking_code_is_spelled_like_the_tool():
+    from honda_voice.db.bookings import speak_reference
+
+    for size in (1, 3, 100):
+        text = "Your booking code is HND-W8X8D. Please bring your licence."
+        c = SpeechCleaner("en-IN")
+        out = "".join(c.feed(text[i : i + size]) for i in range(0, len(text), size)) + c.flush()
+        assert speak_reference("HND-W8X8D") in out and "HND-" not in out

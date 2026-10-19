@@ -4,6 +4,7 @@ which scripts/latency_report.py aggregates later. No transcripts or phone number
 import json
 import logging
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,13 +25,15 @@ class TurnMetrics:
         self.log_path = log_path
         self._turn = 0
         self._rec: dict[str, Any] | None = None
+        self._open_replies: dict[int, int] = {}  # id(rec) -> replies still speaking
+        self._waiting: dict[int, dict[str, Any]] = {}  # turns ended whose reply is still speaking
 
     def attach(self, session: Any) -> None:
         session.on("user_state_changed", self._on_user_state)
         session.on("agent_state_changed", self._on_agent_state)
         session.on("metrics_collected", self._on_metrics)
         session.on("function_tools_executed", self._on_tools)
-        session.on("close", lambda _ev: self.flush())
+        session.on("close", lambda _ev: self.close())
 
     # --- session events ---------------------------------------------------------------------------
     def _on_user_state(self, ev: Any) -> None:
@@ -74,20 +77,52 @@ class TurnMetrics:
             self._rec["lang"] = lang
             self._rec["lang_switched"] = switched
 
-    def record_reply(self, lang: str, stats: TransformStats) -> None:
+    def start_reply(self, lang: str) -> dict[str, Any] | None:
+        """Called when a reply starts speaking: the reply belongs to the current turn. Returns that turn's
+        record for finish_reply. (Before 2026-10-16 the language was recorded when the reply ended, so a
+        reply that finished after the caller's next turn began was filed under the wrong turn.)"""
         rec = self._rec
+        if rec is not None:
+            rec.setdefault("reply_lang", lang)
+            self._open_replies[id(rec)] = self._open_replies.get(id(rec), 0) + 1
+        return rec
+
+    def finish_reply(self, rec: dict[str, Any] | None, stats: TransformStats) -> None:
+        """Add the reply's words and violations to the turn it started in (even if a new turn has begun)."""
         if rec is None:
             return
-        rec["reply_lang"] = lang
         rec["words"] = rec.get("words", 0) + stats.words
         rec["over_length"] = rec["words"] > OVER_LENGTH_WORDS
         rec["violations"].extend(stats.violations)
+        left = self._open_replies.get(id(rec), 1) - 1
+        if left > 0:
+            self._open_replies[id(rec)] = left
+            return
+        self._open_replies.pop(id(rec), None)
+        if id(rec) in self._waiting:  # the turn already ended: write it now that its reply is complete
+            self._write(self._waiting.pop(id(rec)))
 
     def flush(self) -> None:
+        """End the current turn. Its line is written once its reply (if any is still speaking) finishes."""
         rec, self._rec = self._rec, None
         if rec is None:
             return
+        if self._open_replies.get(id(rec)):
+            self._waiting[id(rec)] = rec
+            return
+        self._write(rec)
+
+    def close(self) -> None:
+        """Call end: write everything, including turns whose reply never reported back."""
+        self.flush()
+        for rec in list(self._waiting.values()):
+            self._write(rec)
+        self._waiting.clear()
+        self._open_replies.clear()
+
+    def _write(self, rec: dict[str, Any]) -> None:
         rec.pop("user_stopped_at", None)
+        rec.setdefault("at", datetime.now(UTC).isoformat(timespec="seconds"))  # for latency_report --since
         line = json.dumps(rec, ensure_ascii=False)
         logger.info("turn %s", line)
         if self.log_path is not None:

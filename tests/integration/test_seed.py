@@ -3,11 +3,10 @@
 Run: `uv run pytest -q -m integration`.
 """
 
-import asyncpg
 import pytest
 
-from honda_voice.config import get_settings
 from honda_voice.db.catalog_seed import build_rows, seed
+from honda_voice.db.pool import connect
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +24,7 @@ select md5(string_agg(t, '|' order by t)) from (
 
 @pytest.fixture
 async def conn():
-    c = await asyncpg.connect(get_settings().database_url.get_secret_value())
+    c = await connect()
     try:
         yield c
     finally:

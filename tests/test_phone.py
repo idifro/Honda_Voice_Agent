@@ -1,6 +1,6 @@
 import pytest
 
-from honda_voice.domain.phone import mask, normalize, readback
+from honda_voice.domain.phone import has_number, mask, normalize, readback
 
 
 @pytest.mark.parametrize(
@@ -93,3 +93,8 @@ def test_readback_and_mask_require_normalized(bad):
         readback(bad)
     with pytest.raises(ValueError):
         mask(bad)
+
+
+def test_has_number():
+    assert has_number("98765") and has_number("nau shunya") and has_number("double 9")
+    assert not has_number("Priya") and not has_number("")

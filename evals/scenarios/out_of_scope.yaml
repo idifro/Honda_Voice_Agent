@@ -1,0 +1,21 @@
+# Out of scope (×2): one-line deflection plus a callback offer, no catalog or booking tools.
+- name: "out of scope: insurance renewal (English)"
+  turns:
+    - say: "I need to renew my bike insurance"
+      expect:
+        no_tools: [find_bike, start_booking, list_bikes]
+        says_any: ["call you back", "callback", "call back"]
+
+- name: "out of scope: servicing (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Meri Activa ki servicing kab karwani chahiye?"
+      expect:
+        no_tools: [start_booking]
+        says_any: ["callback", "call"]
+
+- name: "out of scope: insurance renewal (Kannada)"
+  start_language: kn-IN
+  turns:
+    - say: "ನನ್ನ ಬೈಕ್ insurance renewal ಬಗ್ಗೆ ಹೇಳಿ"
+      expect: {no_tools: [find_bike, start_booking], says_any: ["callback"]}

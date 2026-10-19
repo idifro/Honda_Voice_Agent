@@ -1,0 +1,31 @@
+# The live demo script (docs/DEMO.md) as a scripted conversation, so the pre-demo check proves it works.
+# Its own phone and slot: other scenarios' bookings exist until the end of the run (DUPLICATE_BOOKING).
+- name: "demo: Tamil start, English switch, competitor, booking, cancellation"
+  first_turn: true
+  start_language: ta-IN
+  turns:
+    - say: "தமிழ்"
+      expect: {intro: true}
+    - say: "Activa 125 விலை என்ன?"
+      expect: {price: true, language: ta-IN}
+    - say: "Can you tell me in English, what is the mileage of the Shine 100?"
+      lang: en-IN
+      expect: {language: en-IN}  # may first ask "Shine 100 or Shine 100 DX?": both fine
+    - say: "Is the TVS Jupiter better than the Activa?"
+      expect: {honda_pivot: true}
+    - say: "I'd like to book a test ride for the Activa 125 tomorrow at 4 pm"
+      expect: {tools: [start_booking], slots_checked: true}
+    - say: "Yes, I have a driving licence"
+      expect: {tools: [record_licence]}
+    - say: "My name is Karthik"
+    - say: "9 0 0 0 0 1 9 9 9 9"
+      expect: {tools: [validate_phone, confirm_details], says_all: ["9 0 0 0 0", "Karthik"]}
+    - say: "Yes, please confirm"
+      expect: {tools: [book_test_ride], says_any: ["H N D"]}
+    - say: "Actually, I'd like to cancel that booking"
+    - say: "The booking code is {ref_from_call}"
+    - say: "9000019999"
+  expect:  # what must happen, not on which exact turn (12 turns of a real LLM vary slightly)
+    booked: 1
+    cancelled: 1
+    tools: [start_booking, record_licence, validate_phone, confirm_details, book_test_ride, cancel_test_ride]

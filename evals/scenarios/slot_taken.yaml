@@ -1,0 +1,36 @@
+# Slot taken between the read-back and the caller's yes (×2): offer alternatives, read back again, book.
+- name: "slot taken: SP160 3 pm (English)"
+  turns:
+    - say: "I want to test ride the SP160 tomorrow at 3 pm"
+    - say: "Yes, I have one"
+    - say: "Rahul"
+    - say: "9000011111"
+      expect: {tools: [confirm_details]}
+    - say: "Yes"
+      before: take_pending_slot
+      expect: {says_any: ["2:30", "3:30"]}
+    - say: "The first one you said is fine"
+      expect: {tools: [confirm_details], no_tools: [book_test_ride]}
+    - say: "Yes, confirm it"
+  expect:
+    booked: 1
+    book_errors: [SLOT_TAKEN]
+    booking: {model: sp-160, time: "14:30", name: Rahul}
+
+- name: "slot taken: Dio 125 saade 4 (Hinglish)"
+  start_language: hi-IN
+  turns:
+    - say: "Kal shaam saade chaar baje Dio 125 ki test ride chahiye"
+    - say: "Haan, licence hai"
+    - say: "Pooja"
+    - say: "9000088888"
+      expect: {tools: [confirm_details]}
+    - say: "Haan"
+      before: take_pending_slot
+    - say: "Pehla wala theek hai"
+      expect: {no_tools: [book_test_ride]}
+    - say: "Haan, confirm karo"
+  expect:
+    booked: 1
+    book_errors: [SLOT_TAKEN]
+    booking: {model: dio-125, name: Pooja, language: hi-IN}
