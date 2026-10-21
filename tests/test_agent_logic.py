@@ -87,7 +87,7 @@ async def test_check_showroom_open_tool(catalog):
 def test_prefetched_facts_in_session_language(catalog):
     agent = sales(catalog, "ta-IN")
     facts = agent._prefetched_facts("Activa 125 விலை என்ன?")
-    assert facts and "activa-125" in facts and "சுமார் 95,300 ரூபாய்" in facts
+    assert facts and "activa-125" in facts and "சுமார் 96,100 ரூபாய்" in facts
     assert agent._prefetched_facts("insurance renewal ಬಗ್ಗೆ ಹೇಳಿ") is None
 
 

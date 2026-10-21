@@ -30,6 +30,8 @@ The same conversation runs as a scripted test (`evals/scenarios/demo.yaml`) in t
 | 10 | "I'd like to cancel that booking" | Asks for the code and number | |
 | 11 | The code (letter by letter), then the number | Cancels it | The panel shows *Cancelled*; the calendar event disappears |
 
+Sales advisor (Phase 7), if time allows: "I need a scooter for my mother, easy to handle, good mileage" (two suggestions with reasons; watch the **Caller profile** card fill in), "too costly, can I pay in EMI?" (a demo EMI from code), then "please have the showroom call me" + name and number + "yes" (consent read-back; the **Leads** tab shows the scored lead after the call ends, with a summary; **Download CSV**).
+
 Optional extras if time allows: "Hindi mein baat karo" (Hinglish replies), "When should my Activa be serviced?" (polite out-of-scope line with a callback offer), "Compare the Unicorn and the SP160", "Is the showroom open on Sunday at 6 pm?".
 
 ## If something goes wrong

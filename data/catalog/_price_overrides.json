@@ -17,16 +17,17 @@
   },
   {
    "bike_id": "sp-160",
-   "decided": "2026-10-15, product owner: adopt BikeWale Delhi ex-showroom (Single Disc; Double Disc not listed)",
+   "decided": "2026-10-15, product owner: adopt BikeWale Delhi ex-showroom (Single Disc); 2026-10-20: Double Disc added from BikeDekho New Delhi (sourced catalog fill, approved 2026-10-19)",
    "price": {
     "min": 118060,
-    "max": 118060,
-    "as_of": "2026-10-15",
+    "max": 123570,
+    "as_of": "2026-10-20",
     "precision": "exact",
     "source": "https://www.bikewale.com/honda-bikes/sp160/price-in-newdelhi/"
    },
    "variants": {
-    "Single Disc": 118060
+    "Single Disc": 118060,
+    "Double Disc": 123570
    }
   },
   {

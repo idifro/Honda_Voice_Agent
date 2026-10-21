@@ -15,11 +15,13 @@ from livekit.agents import (  # noqa: E402
     JobContext,
     JobProcess,
     cli,
+    room_io,
 )
 from livekit.agents.inference import TurnDetector  # noqa: E402
 from livekit.agents.voice.agent_session import SessionConnectOptions  # noqa: E402
-from livekit.plugins import sarvam, silero  # noqa: E402
+from livekit.plugins import noise_cancellation, sarvam, silero  # noqa: E402
 
+from honda_voice.agent.advisor import Advisor, build_provider, build_summarizer  # noqa: E402
 from honda_voice.agent.call_state import CallState  # noqa: E402
 from honda_voice.agent.hold import HoldAudio  # noqa: E402
 from honda_voice.agent.metrics import TurnMetrics  # noqa: E402
@@ -136,8 +138,10 @@ async def entrypoint(ctx: JobContext) -> None:
             state.detected = str(ev.language)  # shared, so it reaches whichever agent is active
 
     # record=False: no session recording upload until a retention policy is documented (SPEC §17).
-    await session.start(agent=agent, room=ctx.room, record=False)
+    options = room_options(s.noise_cancellation)
+    await session.start(agent=agent, room=ctx.room, record=False, room_options=options)
 
+    start_advisor(ctx, session, state, s)
     limit = asyncio.create_task(end_call_after(s.max_call_minutes * 60, session, ctx, state))
 
     async def _cancel_limit() -> None:
@@ -145,6 +149,38 @@ async def entrypoint(ctx: JobContext) -> None:
 
     ctx.add_shutdown_callback(_cancel_limit)
     await start_hold_audio(ctx, session, state, s)
+
+
+def start_advisor(ctx: JobContext, session: AgentSession, state: CallState, s) -> None:
+    """Caller signals in the background (SPEC §20). Never fails the call: without it, the agent works as
+    before."""
+    if s.advisor == "off":
+        return
+    try:
+        advisor = Advisor(
+            state, build_provider(s), timeout_s=s.signal_timeout_s, mode=s.advisor,
+            summarizer=build_summarizer(s) if s.signal_provider == "nano" else None,
+        )  # fmt: skip
+    except Exception:
+        logger.warning("advisor unavailable", exc_info=True)
+        return
+    advisor.start()
+    state.advisor = advisor
+
+    @session.on("conversation_item_added")
+    def _on_item(ev) -> None:
+        agent = "booking" if type(session.current_agent).__name__ == "BookingAgent" else "sales"
+        advisor.on_item(ev.item, list(session.history.items), agent)
+
+    ctx.add_shutdown_callback(advisor.close)
+
+
+def room_options(mode: str) -> room_io.RoomOptions:
+    """Caller audio filter (LiveKit Cloud): "bvc" also removes other people's voices (a distant speaker was
+    transcribed as Hindi and switched the call's language, 2026-10-19); "nc" only noise; "off" none.
+    BVC is billed as voice isolation (100 free min/month on the Build plan); NC is free."""
+    nc = {"bvc": noise_cancellation.BVC, "nc": noise_cancellation.NC}.get(mode)
+    return room_io.RoomOptions(audio_input=room_io.AudioInputOptions(noise_cancellation=nc() if nc else None))
 
 
 async def start_hold_audio(ctx: JobContext, session: AgentSession, state: CallState, s) -> None:
@@ -186,6 +222,7 @@ async def start_hold_audio(ctx: JobContext, session: AgentSession, state: CallSt
 
     hold = HoldAudio(player, state, synthesize, after_s=s.hold_after_s)
     session.on("agent_state_changed", lambda ev: hold.on_agent_state(ev.new_state))
+    state.before_reply = hold.before_reply
     state.on_language_switch = hold.prefetch
     hold.prefetch(state.lang)
 

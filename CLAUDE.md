@@ -19,7 +19,7 @@ Real-time voice agent for a Honda (HMSI) showroom. It answers model and price qu
 9. **The service-role key and DB URL never reach the browser.** The frontend only reads data through Next.js server routes.
 10. **Every public table has RLS enabled.** New migrations must enable it.
 11. **Never disparage competitors or state facts about competitor products.** Follow the competitor policy in SPEC §8.
-12. **The decision model gives judgments, code applies rules (SPEC §20).** The decision model is Laya, self-hosted (`services/laya/run.sh`, SPEC §23); Jev is not used. It never decides prices, dates, slots, or phone validity. Only the booking-confirmation gate may call it in the serial voice path; every other call runs in parallel and must not delay audio. On timeout or error, fail safe (re-confirm), never fail open.
+12. **The signal model gives judgments, code applies rules, the LLM writes replies (SPEC §20).** Caller signals come from gpt-5.4-nano (Laya is optional, SPEC §23.2b). Signals never decide prices, EMIs, dates, slots, or phone validity, and never block a booking. They run in parallel and must never delay audio; a late or failed signal changes nothing.
 13. **LangGraph (Phase 8) stays behind `ORCHESTRATOR=langgraph`, and the native path is never removed.** No full-reply post-processing nodes; route with `decision` or `rules` unless the A/B in SPEC §21.3 justifies `llm`.
 
 ## Commands
@@ -33,15 +33,15 @@ uv run python scripts/seed_catalog.py                # load data/catalog/*.json 
 uv run python scripts/generate_slots.py --days 14    # create test-ride slots
 uv run python scripts/retry_calendar_sync.py         # re-push bookings whose calendar sync failed
 
-# Quality
+# Quality (`make help` lists shortcuts: make test = lint + unit + frontend tests, no DB/network)
 uv run ruff check . && uv run ruff format --check .
 uv run pytest -q                                     # unit tests (no network)
 uv run pytest -q -m integration                      # needs a Supabase test DB (local Postgres from Phase 11)
 uv run python -m evals.run_text_evals                # scripted conversation evals
 scripts/check_all.sh                                 # pre-demo gate: lint, all tests, evals (SKIP_EVALS=1: quick)
 uv run python scripts/latency_report.py --room honda- # TTFA p50/p90 etc. from logs/turns.jsonl vs §1 targets
-services/laya/run.sh                                 # Phase 7: local Laya decision server on 127.0.0.1:8100
-uv run python -m evals.decision_labelled             # Phase 7: Laya vs LLM-fallback on labelled turns
+uv run python -m evals.signals_labelled             # Phase 7: caller-signal accuracy per language (nano, optional Laya)
+services/laya/run.sh                                 # optional local Laya server on 127.0.0.1:8100 (SPEC §23)
 uv run python -m evals.latency_ab --configs native,lg_rules,lg_decision,lg_llm   # Phase 8 A/B
 
 # Frontend

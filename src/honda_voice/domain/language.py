@@ -146,7 +146,8 @@ def next_language(
     asked = requested_language(transcript, supported)
     if asked:
         return asked
-    det = to_supported(detected, supported) or script_language(transcript, supported)
+    # Native script outranks STT's tag: Sarvam tagged a 3-word Tamil-script turn hi-IN (2026-10-19 call).
+    det = script_language(transcript, supported) or to_supported(detected, supported)
     if det is None or det == current:
         return current
     confident = probability is None or probability >= SWITCH_MIN_PROBABILITY

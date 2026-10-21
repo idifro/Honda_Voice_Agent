@@ -31,6 +31,7 @@ export function App() {
   const session = useSession(tokenSource);
   const [panelOpen, setPanelOpen] = useState(false); // drawer on small screens
   const onUnauthorized = useCallback(() => router.refresh(), [router]); // session expired: back to sign-in
+  const roomName = session.isConnected ? session.room.name : null; // for the live caller profile
 
   return (
     <AgentSessionProvider session={session}>
@@ -46,7 +47,7 @@ export function App() {
             aria-expanded={panelOpen}
             onClick={() => setPanelOpen((open) => !open)}
           >
-            {panelOpen ? 'Close' : 'Bookings'}
+            {panelOpen ? 'Close' : 'Panel'}
           </Button>
           <LogoutButton />
         </div>
@@ -56,11 +57,13 @@ export function App() {
       </main>
       <SidePanel
         onUnauthorized={onUnauthorized}
+        roomName={roomName}
         className="fixed top-14 right-0 bottom-0 z-40 hidden w-[380px] lg:flex"
       />
       {panelOpen && (
         <SidePanel
           onUnauthorized={onUnauthorized}
+          roomName={roomName}
           className="fixed inset-x-0 top-14 bottom-0 z-40 flex lg:hidden"
         />
       )}

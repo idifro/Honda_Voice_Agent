@@ -1,4 +1,5 @@
-"""Migration 001 against the real database (SPEC §5). Every test runs in a transaction that is rolled back.
+"""Migrations 001 and 005 against the real database (SPEC §5, §20.6). Every test runs in a transaction
+that is rolled back.
 
 Run: `uv run pytest -q -m integration` (needs DATABASE_URL in .env).
 """
@@ -13,6 +14,7 @@ pytestmark = pytest.mark.integration
 TABLES = {
     "showrooms", "bikes", "bike_variants", "bike_on_road_prices", "bike_aliases",
     "slots", "bookings", "leads", "schema_migrations",
+    "bike_fit", "finance_schemes", "customers", "calls", "caller_profiles", "call_signals",
 }  # fmt: skip
 BIKE = dict(
     id="t-bike", name="Test", segment="commuter", division="RedWing", fuel="petrol", status="on_sale",
@@ -154,3 +156,45 @@ async def test_slot_capacity_check(tx):
                 "insert into public.slots (showroom_id, bike_id, starts_at, capacity, booked) "
                 "values ('s', 't-bike', now(), 1, 2)"
             )
+
+
+async def test_customer_consent_needs_time_and_text_version(tx):
+    with pytest.raises(asyncpg.CheckViolationError):
+        async with tx.transaction():
+            await tx.execute(
+                "insert into public.customers (phone, callback_consent) values ('9000012345', true)"
+            )
+    await tx.execute(
+        "insert into public.customers (phone, callback_consent, consent_at, consent_text_version) "
+        "values ('9000012345', true, now(), 'v1')"
+    )
+    with pytest.raises(asyncpg.UniqueViolationError):  # one row per number: the customer list
+        async with tx.transaction():
+            await tx.execute("insert into public.customers (phone) values ('9000012345')")
+
+
+async def test_bike_fit_vocabulary_is_checked(tx):
+    await insert_bike(tx)
+    with pytest.raises(asyncpg.CheckViolationError):
+        async with tx.transaction():
+            await tx.execute(
+                "insert into public.bike_fit (bike_id, ease_score, use_cases, source) "
+                "values ('t-bike', 3, '{racing}', 'test')"
+            )
+    await tx.execute(
+        "insert into public.bike_fit (bike_id, ease_score, use_cases, rider_fit, source) "
+        "values ('t-bike', 5, '{commute}', '{first_time}', 'test')"
+    )
+
+
+async def test_leads_default_to_new_and_link_to_calls(tx):
+    call_id = await tx.fetchval("insert into public.calls (room_name) values ('t-room') returning id")
+    lead = await tx.fetchrow(
+        "insert into public.leads (reason, call_id, score, score_value) "
+        "values ('caller_requested', $1, 'hot', 80) returning status, score",
+        call_id,
+    )
+    assert (lead["status"], lead["score"]) == ("new", "hot")
+    with pytest.raises(asyncpg.CheckViolationError):
+        async with tx.transaction():
+            await tx.execute("insert into public.leads (reason, score) values ('x', 'lukewarm')")

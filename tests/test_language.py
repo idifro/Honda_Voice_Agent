@@ -132,6 +132,11 @@ def test_script_language(text, expected):
     assert script_language(text) == expected
 
 
+def test_next_language_script_outranks_detection():
+    assert next_language("ta-IN", "Activa 125 விலை என்ன", "hi-IN", 1.0) == "ta-IN"
+    assert next_language("en-IN", "Activa 125 விலை என்ன", "hi-IN", 1.0) == "ta-IN"
+
+
 def test_next_language_infers_from_script_when_detection_missing():
     assert next_language("en-IN", "Activa 125 விலை என்ன சொல்லுங்க", None, None) == "ta-IN"
     assert (

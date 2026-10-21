@@ -1,6 +1,7 @@
 """Hold line for slow turns: when the agent has been "thinking" (a tool, or an LLM call) for HOLD_AFTER_S, it
 says a short fixed line in the caller's language ("One moment please, let me check.") and carries on; the
-reply follows when it's ready. If the reply starts or the caller speaks first, the line is cut.
+reply follows when it's ready. A line that has started is finished before the reply plays (cutting it
+mid-sentence sounded abrupt, 2026-10-19 call); if the caller speaks, it stops at once.
 
 The line plays on a separate background audio track, not through the agent's speech queue, so it never
 enters the chat history or changes turn-taking. It is synthesised once per language per call and cached.
@@ -38,17 +39,34 @@ class HoldAudio:
         self._filler: dict[str, asyncio.Task] = {}
 
     def on_agent_state(self, new_state: str) -> None:
-        """Wire to the session's agent_state_changed: start the timer on "thinking", stop on anything else."""
+        """Wire to the session's agent_state_changed: start the timer on "thinking"; on "speaking" let a line
+        that has started finish (before_reply waited for it); on anything else (the caller spoke) stop."""
         if new_state == "thinking":
             if self._task is None or self._task.done():
                 self._task = asyncio.create_task(self._hold())
+        elif new_state == "speaking":
+            self._cancel_timer()
         else:
             self.stop()
 
-    def stop(self) -> None:
+    async def before_reply(self, max_wait_s: float = 4.0) -> None:
+        """Called just before the reply's first audio: a line not yet started never starts; one that is
+        playing is waited for (at most max_wait_s), so the reply follows it instead of cutting it."""
+        self._cancel_timer()
+        handle, self._handle = self._handle, None
+        if handle is not None and not handle.done():
+            try:
+                await asyncio.wait_for(handle.wait_for_playout(), max_wait_s)
+            except TimeoutError:
+                handle.stop()
+
+    def _cancel_timer(self) -> None:
         if self._task is not None and not self._task.done():
             self._task.cancel()
         self._task = None
+
+    def stop(self) -> None:
+        self._cancel_timer()
         if self._handle is not None:
             self._handle.stop()
             self._handle = None

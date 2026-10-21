@@ -2,7 +2,6 @@
 database (db/bookings.py), dates from code (rule 5), and nothing is booked unless the caller agreed to exactly
 what was read back (rule 6, domain/booking_guard.py)."""
 
-import ast
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime
@@ -40,7 +39,10 @@ REASON_NOTES = {
 REFUSAL_NOTES = {
     "SLOT_NOT_OFFERED": "Use a day_ref and time_24h that check_slots returned; call check_slots first if "
     "needed.",
-    "LICENCE_NOT_CONFIRMED": "Ask if they have a valid two-wheeler driving licence; call record_licence.",
+    # The no-licence callback went to confirm_details instead of capture_lead (2026-10-20 eval run).
+    "LICENCE_NOT_CONFIRMED": "If the caller said they have no licence, don't book: save the callback with "
+    "capture_lead(reason='no_licence', name, phone). Otherwise ask if they have a valid two-wheeler driving "
+    "licence and call record_licence.",
     "NAME_MISSING": "Ask the caller's name first.",
     "PHONE_NOT_VALIDATED": "Call validate_phone with the number the caller said first.",
     "NOT_CONFIRMED_BY_CALLER": "Only book after the caller says yes to the read-back.",
@@ -54,6 +56,9 @@ REFUSAL_NOTES = {
 
 
 class BookingAgent(MultilingualAgent):
+    # Read-back, booked line and callback consent are fixed text from code: spoken without a second LLM call.
+    FIXED_SAY_TOOLS = ("confirm_details", "book_test_ride", "capture_lead")
+
     def __init__(
         self,
         state: CallState,
@@ -79,28 +84,6 @@ class BookingAgent(MultilingualAgent):
             instructions=f"check_slots already ran for the caller's request (day_ref={day_ref!r}, "
             f"time_24h={time_24h!r}): {found}. Reply from this result; don't call check_slots again for it."
         )
-
-    def _fixed_tool_reply(self, chat_ctx) -> str | None:
-        """The read-back (confirm_details) and the booked line (book_test_ride) are fixed text built in code;
-        the LLM's second call only repeated them (~1 s per booking turn; Phase 6 p90). When one of these
-        succeeded in the latest tool step and no other tool in that step failed, speak its line directly."""
-        outputs = []
-        for item in reversed(chat_ctx.items):
-            kind = getattr(item, "type", None)
-            if kind == "function_call_output":
-                outputs.append(item)
-            elif kind != "function_call":
-                break  # the tool step ends at the last message
-        say = None
-        for out in outputs:
-            result = _parse_output(out)
-            if out.is_error or result is None or "error" in result or result.get("valid") is False:
-                return None  # something failed: let the LLM handle it
-            if out.name in ("confirm_details", "book_test_ride") and isinstance(result.get("say"), str):
-                if say is not None:
-                    return None  # two fixed lines in one step: unusual, let the LLM word it
-                say = result["say"]
-        return say
 
     def _turn_instructions(self) -> str:
         return booking_turn_instructions(self.lang, self.state.clock(), self._state_line())
@@ -388,6 +371,8 @@ class BookingAgent(MultilingualAgent):
 
         async def work(conn) -> dict[str, Any]:
             ok = await bookings.cancel(conn, ref, normalized)
+            if ok:
+                self.state.outcomes.add("cancelled")
             if ok and (booking_id := await bookings.mark_calendar_pending(conn, ref)) is not None:
                 if self.state.calendar is not None:
                     self.state.calendar.schedule(booking_id)
@@ -407,12 +392,3 @@ class BookingAgent(MultilingualAgent):
         """Hand back to the sales assistant for questions about models, prices or showroom hours."""
         logger.info("handoff: booking -> sales")
         return SalesAgent(self.state, greet=False, resume=True, chat_ctx=self.chat_ctx)
-
-
-def _parse_output(item) -> dict[str, Any] | None:
-    """A tool output as stored in the chat history (the dict's text form), or None if it isn't one."""
-    try:
-        value = ast.literal_eval(item.output)
-    except (ValueError, SyntaxError):
-        return None
-    return value if isinstance(value, dict) else None

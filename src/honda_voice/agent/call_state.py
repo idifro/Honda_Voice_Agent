@@ -1,7 +1,7 @@
 """Per-call state shared by every agent in the call (SPEC §4.1, §7). Handoffs create new Agent objects, so the
 session language, turn count and booking draft live here, not on an agent."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -35,6 +35,11 @@ class CallState:
     booking_model: str | None = None  # bike_id the caller wants to ride, if known
     booking: BookingDraft = field(default_factory=BookingDraft)
     on_language_switch: Callable[[str], None] | None = None  # e.g. prepare the hold line in the new language
+    before_reply: Callable[[], Awaitable[None]] | None = None  # before a reply's first audio (hold line)
+    call_id: int | None = None  # public.calls row (SPEC §20.5), set once created
+    outcomes: set[str] = field(default_factory=set)  # "lead", "cancelled"; bookings are booking.references
+    advisor: Any = None  # agent.advisor.Advisor when ADVISOR is shadow/on (SPEC §20)
+    lead_pending: dict[str, Any] | None = None  # callback read back, waiting for the caller's yes (consent)
 
     def __post_init__(self) -> None:
         self.tts_lang = self.tts_lang or self.lang

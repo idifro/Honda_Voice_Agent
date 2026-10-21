@@ -21,11 +21,12 @@ def test_unverified_fields_never_returned(catalog):
 
 
 def test_missing_variant_prices_fall_back_to_range(catalog):
-    activa = bike_summary(catalog.models["activa-125"], "hi-IN")
-    assert all(v["spoken_price"] is None for v in activa["variants"])
-    assert "variant_price_instruction" in activa
-    assert activa["price_min_spoken"] == "90 hazaar 8 sau rupaye"  # already a round hundred
-    assert activa["price_max_spoken"] == "lagbhag 95 hazaar 3 sau rupaye"
+    rebel = bike_summary(catalog.models["rebel-500"], "hi-IN")  # E-Clutch not launched: no price
+    assert [v["spoken_price"] is None for v in rebel["variants"]] == [False, True]
+    assert "variant_price_instruction" in rebel
+    assert rebel["price_min_spoken"] == "5 lakh 12 hazaar rupaye"
+    sp125 = bike_summary(catalog.models["sp-125"], "hi-IN")  # one variant unpriced
+    assert [v["spoken_price"] is None for v in sp125["variants"]] == [False, False, True]
 
 
 def test_model_without_price(catalog):
@@ -53,15 +54,18 @@ def test_all_verified_specs_features_and_colours_returned(catalog):
 def test_on_road_breakdown_in_session_language(catalog):
     shine = bike_summary(catalog.models["shine-100"], "hi-IN")["on_road"]
     assert shine["available"] and shine["city"] == "Delhi"
-    assert shine["from_spoken"] == "lagbhag 77 hazaar 9 sau rupaye"  # ₹77,945
+    assert shine["from_spoken"] == "lagbhag 78 hazaar 7 sau rupaye"  # ₹78,653
     b = shine["breakdown"]
     assert (b["rto_spoken"], b["insurance_spoken"]) == (
+        "lagbhag 6 hazaar 3 sau rupaye",
         "lagbhag 5 hazaar 8 sau rupaye",
-        "lagbhag 6 hazaar 5 sau rupaye",
     )
+    assert b["other"] == [
+        {"label": "Basic accessories kit", "spoken": "lagbhag 9 sau rupaye", "deduction": False}
+    ]
     tamil = bike_summary(catalog.models["activa-110"], "ta-IN")["on_road"]
-    assert [v["variant"] for v in tamil["variants"]][0] == "Standard"  # cheapest first
-    assert tamil["from_spoken"] == "சுமார் 90,000 ரூபாய்"  # ₹90,030 rounds
+    assert [v["variant"] for v in tamil["variants"]][0] == "STD"  # cheapest first
+    assert tamil["from_spoken"] == "சுமார் 90,700 ரூபாய்"  # ₹90,699 rounds
 
 
 def test_subsidy_is_a_deduction(catalog):
@@ -71,8 +75,9 @@ def test_subsidy_is_a_deduction(catalog):
 
 def test_rows_needing_review_are_never_returned(catalog):
     assert bike_summary(catalog.models["qc3"], "en-IN")["on_road"]["available"] is False
-    assert bike_summary(catalog.models["cb350-hness"], "en-IN")["on_road"]["available"] is False
-    assert bike_summary(catalog.models["rebel-500"], "en-IN")["on_road"]["available"] is False  # upcoming
+    assert (
+        bike_summary(catalog.models["rebel-500"], "en-IN")["on_road"]["available"] is False
+    )  # no Delhi price
 
 
 def test_list_and_compare_views(catalog):

@@ -1,7 +1,7 @@
 """Settings loaded from the environment / `.env` (SPEC §13). Secrets stay as SecretStr."""
 
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -66,6 +66,17 @@ class Settings(BaseSettings):
 
     # Hold line: after this much "thinking", a short fixed line ("One moment please, let me check.").
     hold_after_s: float = 2.0
+    noise_cancellation: Literal["bvc", "nc", "off"] = "bvc"  # caller audio filter, worker.room_options
+
+    # Sales advisor (SPEC §20): per-turn caller signals in parallel with the reply, never delaying audio.
+    # on (default since step 7.3): + one suggested move per reply; shadow: recorded only, call unchanged.
+    advisor: Literal["off", "shadow", "on"] = "on"
+    signal_provider: Literal["nano", "laya"] = "nano"
+    signal_deployment: str = ""  # Azure deployment for nano; empty: AZURE_OPENAI_FALLBACK_DEPLOYMENT
+    signal_reasoning_effort: str = "minimal"
+    signal_timeout_s: float = 8.0  # a late answer is dropped; the next turn asks again
+    laya_base_url: str = "http://127.0.0.1:8100"  # SIGNAL_PROVIDER=laya only (SPEC §23)
+    laya_model: str = "multilingual"
 
     # Database / showroom
     database_url: SecretStr = SecretStr("")

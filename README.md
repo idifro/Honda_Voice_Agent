@@ -73,7 +73,9 @@ Without the website, you can talk to the agent in the terminal: `uv run python -
 ## Check before a demo
 
 ```bash
-scripts/check_all.sh                  # lint, unit, database and frontend tests, and 45 scripted conversations (~12 min)
+make test                             # quick: lint, Python unit tests, frontend tests (no database, no network)
+make help                             # every target: test-integration, evals, signals, check, …
+scripts/check_all.sh                  # lint, unit, database and frontend tests, and the scripted conversations (~15 min)
 SKIP_EVALS=1 scripts/check_all.sh     # the same without the conversations (~2 min)
 uv run python scripts/latency_report.py --since 2026-10-16 --room honda-   # response times from real browser calls
 ```
@@ -86,6 +88,8 @@ This notice is shown on the sign-in screen and before each call:
 
 - Your voice is processed live to understand you and reply: speech recognition and speech by **Sarvam AI**, replies by **Azure OpenAI**; the audio travels through **LiveKit Cloud**. Calls are **not recorded**.
 - If you book a test ride, we store your **name, mobile number, chosen slot, call language and your answer about a driving licence**, only to arrange the ride, in a database hosted by **Supabase** (Mumbai). A copy of the booking with the number **masked** goes to the showroom's **Google Calendar**.
+- To help you choose, the assistant notes what you're looking for (for example use, budget, timeline) as categories, never your words, and keeps a short summary of the call.
+- The showroom calls you back only if you agree when the assistant reads your number back; we then store your name, number, language and that consent (with its time), only for that callback.
 - Phone numbers are masked in logs and on screen. This is a demo: please don't share anything you wouldn't want a showroom to see.
 
 Personal data here is covered by India's Digital Personal Data Protection (DPDP) Act. To remove a booking, cancel it in a call (booking code + phone number) or ask the operator to delete it from the `bookings` table.

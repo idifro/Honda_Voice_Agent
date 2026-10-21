@@ -24,7 +24,7 @@ async def catalog():
 
 async def test_loads_everything(catalog):
     assert len(catalog.models) == 33
-    assert catalog.models["activa-e"]["price"]["min"] == 118000
+    assert catalog.models["activa-e"]["price"]["min"] == 120133
     assert len(catalog.models["shine-100"]["on_road"]) == 1
 
 

@@ -1,0 +1,30 @@
+{
+ "_about": "Demo EMI plans (SPEC §20.4), not a real lender's offer. The agent always adds that the showroom confirms the actual terms. EMI is computed by domain/finance.py from a plan and the catalog ex-showroom price.",
+ "as_of": "2026-10-20",
+ "schemes": [
+  {
+   "id": "demo-12",
+   "name": "Demo plan, 12 months",
+   "interest_rate_pct": 9.99,
+   "tenure_months": [12],
+   "min_down_payment_pct": 10,
+   "processing_fee_inr": 999
+  },
+  {
+   "id": "demo-standard",
+   "name": "Demo plan, standard",
+   "interest_rate_pct": 11.5,
+   "tenure_months": [24, 36],
+   "min_down_payment_pct": 15,
+   "processing_fee_inr": 1499
+  },
+  {
+   "id": "demo-low-down",
+   "name": "Demo plan, low down payment",
+   "interest_rate_pct": 13.5,
+   "tenure_months": [24, 36, 48],
+   "min_down_payment_pct": 5,
+   "processing_fee_inr": 1999
+  }
+ ]
+}

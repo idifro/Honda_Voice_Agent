@@ -21,6 +21,7 @@
   start_language: hi-IN
   turns:
     - say: "Kal shaam saade chaar baje Dio 125 ki test ride chahiye"
+      expect: {time_24h: "16:30"}  # 15:30 / 15:45 seen on 2026-10-20 ("paune chaar" example leaked)
     - say: "Haan, licence hai"
     - say: "Pooja"
     - say: "9000088888"

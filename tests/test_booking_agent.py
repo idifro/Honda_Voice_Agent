@@ -58,7 +58,7 @@ async def test_start_booking_family_name_or_upcoming(catalog):
     st = state(catalog)
     assert isinstance(await SalesAgent(st, greet=False).start_booking("activa"), BookingAgent)
     assert st.booking_model is None  # "activa" could be several models: BookingAgent asks which
-    out = await SalesAgent(st, greet=False).start_booking("Rebel 500")
+    out = await SalesAgent(st, greet=False).start_booking("XR300L")  # pre-booking
     assert out["handed_over"] is False and "upcoming_model" in out["note"]
 
 

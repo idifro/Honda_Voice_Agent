@@ -15,6 +15,7 @@ dependencies = [
     "livekit-plugins-silero==1.8.8",
     "livekit-plugins-turn-detector==1.8.8",
     "livekit-plugins-openai==1.8.8",   # Azure OpenAI LLM client
+    "livekit-plugins-noise-cancellation==0.3.2",  # BVC/NC caller audio filter (LiveKit Cloud), 2026-09-15
     "sarvamai==0.1.37",                # direct SDK: Phase 1 STT comparison (REST, keyterms)
     "asyncpg==0.32.0",
     "pydantic>=2.9,<3",

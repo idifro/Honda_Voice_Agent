@@ -1,6 +1,7 @@
 """Behaviour shared by SalesAgent and BookingAgent (SPEC §4.1, §9): the per-turn language decision, the
 language tag at the end of the turn context, TTS retargeting, streaming speech cleanup, and lead capture."""
 
+import ast
 import logging
 from collections.abc import AsyncIterable
 from typing import Any
@@ -8,6 +9,7 @@ from typing import Any
 from livekit.agents import NOT_GIVEN, Agent, ModelSettings, function_tool, llm
 
 from honda_voice.agent.call_state import CallState
+from honda_voice.agent.prompts import LEAD_CONSENT
 from honda_voice.agent.text_transforms import InternalTagFilter, TransformStats, clean_text_stream
 from honda_voice.db import bookings
 from honda_voice.domain import phone as phone_mod
@@ -94,9 +96,29 @@ class MultilingualAgent(Agent):
         """A reply decided in code and spoken without an LLM call, or None."""
         return None
 
+    FIXED_SAY_TOOLS: tuple[str, ...] = ("capture_lead",)  # tools whose "say" is fixed text from code
+
     def _fixed_tool_reply(self, chat_ctx) -> str | None:
-        """On the step after tool calls: a reply the tools already fixed, spoken without an LLM call."""
-        return None
+        """On the step after tool calls: a reply the tools already fixed (their "say" text), spoken without an
+        LLM call; the second call only repeated it (~1 s; Phase 6 p90). Only when one such tool spoke in the
+        latest tool step and no tool in that step failed."""
+        outputs = []
+        for item in reversed(chat_ctx.items):
+            kind = getattr(item, "type", None)
+            if kind == "function_call_output":
+                outputs.append(item)
+            elif kind != "function_call":
+                break  # the tool step ends at the last message
+        say = None
+        for out in outputs:
+            result = _parse_output(out)
+            if out.is_error or result is None or "error" in result or result.get("valid") is False:
+                return None  # something failed: let the LLM handle it
+            if out.name in self.FIXED_SAY_TOOLS and isinstance(result.get("say"), str):
+                if say is not None:
+                    return None  # two fixed lines in one step: unusual, let the LLM word it
+                say = result["say"]
+        return say
 
     # The language tag goes in llm_node, not on_user_turn_completed: preemptive generation skips that hook.
     async def llm_node(self, chat_ctx, tools, model_settings: ModelSettings):
@@ -176,7 +198,11 @@ class MultilingualAgent(Agent):
                 spoken.append(piece)
                 yield piece
 
+        first_frame = True
         async for frame in Agent.default.tts_node(self, cleaned(), model_settings):
+            if first_frame and st.before_reply is not None:
+                await st.before_reply()  # a started hold line finishes first; synthesis ran meanwhile
+            first_frame = False
             yield frame
         mismatch = script_mismatch(lang, "".join(spoken))
         if mismatch:
@@ -193,9 +219,12 @@ class MultilingualAgent(Agent):
         name: str | None = None,
         phone: str | None = None,
         interest: str | None = None,
+        caller_confirmed: bool = False,
     ) -> dict[str, Any]:
         """Save the caller's details so the showroom calls them back. Use when booking can't complete, for an
         upcoming or pre-booking model, or when the caller asks for a callback. Ask for name and number first.
+        The first call reads the number back and asks for consent (say its "say" text word for word); call
+        again with the same details and caller_confirmed=true only after the caller says yes.
 
         Args:
             reason: One of: no_slot, phone_failed, no_licence, upcoming_model, caller_requested, out_of_scope,
@@ -203,6 +232,7 @@ class MultilingualAgent(Agent):
             name: The caller's name, if given.
             phone: The mobile number as the caller said it, if given.
             interest: The model or topic they're interested in, if any.
+            caller_confirmed: True only when the caller said yes to the read-back and callback question.
         """
         normalized = phone_mod.normalize(phone) if phone else None
         # A callback needs a number; without one only after the caller failed to give a valid one twice.
@@ -218,15 +248,50 @@ class MultilingualAgent(Agent):
             }
         if interest and (ids := self.catalog.index.mentions(interest)):
             interest = ids[0]
-        async with self.state.pool.acquire() as conn:
-            await bookings.capture_lead(
-                conn, reason, self.lang, name=name, phone=normalized, interest=interest
+        st = self.state
+        if normalized is not None:  # consent before saving a number (SPEC §20.5): read back, then the yes
+            pending = st.lead_pending
+            agreed = (
+                caller_confirmed
+                and pending is not None
+                and pending["phone"] == normalized
+                and st.caller_turns > pending["turn"]
             )
+            if not agreed:
+                st.lead_pending = {"phone": normalized, "turn": st.caller_turns}
+                return {
+                    "saved": False,
+                    "say": LEAD_CONSENT[self.lang].format(phone=phone_mod.speak(normalized)),
+                    "note": "Say this word for word and wait. Only if the caller says yes, call capture_lead "
+                    "again with the same details and caller_confirmed=true; if no, save nothing.",
+                }
+        async with st.pool.acquire() as conn:
+            async with conn.transaction():
+                customer = None
+                if normalized is not None:
+                    customer = await bookings.upsert_customer(
+                        conn, normalized, name, self.lang, callback_consent=True
+                    )
+                await bookings.capture_lead(
+                    conn, reason, self.lang, name=name, phone=normalized, interest=interest,
+                    interest_bike_id=interest if interest in self.catalog.models else None,
+                    call_id=st.call_id, customer_id=customer,
+                )  # fmt: skip
+        st.lead_pending = None
+        self.state.outcomes.add("lead")
         logger.info(
             "lead captured: reason=%s phone=%s", reason, phone_mod.mask(normalized) if normalized else None
         )
         return {
             "saved": True,
-            "phone_readback": phone_mod.speak(normalized) if normalized else None,
-            "note": "Tell the caller the showroom will call them back soon; read back the number if given.",
+            "note": "Say the showroom will call them back soon (the number was read back already).",
         }
+
+
+def _parse_output(item) -> dict[str, Any] | None:
+    """A tool output as stored in the chat history (the dict's text form), or None if it isn't one."""
+    try:
+        value = ast.literal_eval(item.output)
+    except (ValueError, SyntaxError):
+        return None
+    return value if isinstance(value, dict) else None

@@ -1,0 +1,2296 @@
+{
+ "_about": "Sourced values added on top of the generated catalog by scripts/seed_catalog.py (SPEC §20.7; approved 2026-10-19). Prices: BikeDekho New Delhi pages; every on-road row's parts add up to its total. Estimates are flagged and never spoken. Applied before _price_overrides.json, so product-owner decisions win.",
+ "as_of": "2026-10-20",
+ "left_empty": {
+  "sp-125/25-year Anniversary Edition": "not listed on BikeDekho, BikeWale or ZigWheels Delhi pages",
+  "rebel-500 on-road": "no Delhi price: sold through BigWing Topline in Gurugram, Mumbai and Bengaluru",
+  "rebel-500/E-Clutch": "not launched in India (the May 2025 launch has one variant)",
+  "activa-e/qc1/qc3 on-road": "kept BikeWale's rows: they subtract the PM E-Drive subsidy (still in force, extended to March 2028), BikeDekho's don't; RoadSync Duo breakdown left empty (sources ~9,000 apart)"
+ },
+ "models": {
+  "activa-110": {
+   "variant_prices": {
+    "values": {
+     "STD": 76358,
+     "DLX": 87011,
+     "H-Smart": 91482,
+     "25-year Anniversary Edition": 85339
+    },
+    "source": "https://www.bikedekho.com/honda/activa/price-in-new-delhi",
+    "notes": {}
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Precious White",
+     "Mat Axis Gray Metallic",
+     "Decent Blue Metallic",
+     "Pearl Siren Blue",
+     "Rebel Red Metallic",
+     "Mat Steel Black Metallic (Anniversary Edition)",
+     "Pearl Siren Blue (Anniversary Edition)"
+    ],
+    "source": "https://www.bikedekho.com/honda/activa/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "family_errands",
+     "college",
+     "delivery"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "activa-125": {
+   "variant_prices": {
+    "values": {
+     "DLX": 91679,
+     "H-Smart": 96122,
+     "25-year Anniversary Edition": 89656
+    },
+    "source": "https://www.bikedekho.com/honda/activa-125/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 47,
+    "basis": "BikeDekho overall (owner-reported)",
+    "source": "https://www.bikedekho.com/honda/activa-125/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Precious White",
+     "Pearl Siren Blue",
+     "Rebel Red Metallic",
+     "Mat Axis Gray Metallic",
+     "Pearl Deep Ground Gray",
+     "Mat Steel Black Metallic",
+     "Pearl Siren Blue (Anniversary Edition)"
+    ],
+    "source": "https://www.bikedekho.com/honda/activa-125/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 107,
+    "seat_height_mm": 765,
+    "source": "https://www.bikedekho.com/honda/activa-125/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "family_errands",
+     "college",
+     "delivery"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "activa-e": {
+   "variant_prices": {
+    "values": {
+     "Standard": 120133,
+     "RoadSync Duo": 154733
+    },
+    "source": "https://www.bikedekho.com/honda/activa-electric/price-in-new-delhi",
+    "notes": {}
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Misty White",
+     "Matt Foggy Silver Metallic",
+     "Pearl Shallow Blue",
+     "Pearl Serenity Blue"
+    ],
+    "source": "https://www.bikedekho.com/honda/activa-electric/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 118,
+    "seat_height_mm": null,
+    "source": "https://www.bikedekho.com/honda/activa-electric/specifications"
+   },
+   "size_estimate": {
+    "kerb_weight_kg": null,
+    "seat_height_mm": 770,
+    "why": "no published seat height"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "family_errands",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "adv160": {
+   "variant_prices": {
+    "values": {
+     "Standard": 170000
+    },
+    "source": "https://www.bikedekho.com/honda/adv-160/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 45,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Athletic Blue Metallic",
+     "Pearl Deep Ground Gray",
+     "Mat Dune Brown",
+     "Mat Axis Gray Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/adv-160/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 137,
+    "seat_height_mm": 780,
+    "source": "https://www.bikedekho.com/honda/adv-160/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb1000-hornet-sp": {
+   "variant_prices": {
+    "values": {
+     "SP": 1329390
+    },
+    "source": "https://www.bikedekho.com/honda/cb-1000-hornet/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 17,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/cb-1000-hornet/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb-1000-hornet/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Riding modes",
+     "Quickshifter",
+     "Navigation",
+     "Bluetooth connectivity",
+     "5-inch TFT display",
+     "Honda Selectable Torque Control",
+     "Assist and slipper clutch"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb-1000-hornet/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 212,
+    "seat_height_mm": 809,
+    "source": "https://www.bikedekho.com/honda/cb-1000-hornet/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "long_rides",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "experienced"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb125-hornet": {
+   "variant_prices": {
+    "values": {
+     "Standard": 115485
+    },
+    "source": "https://www.bikedekho.com/honda/cb125-hornet/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 48,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/cb125-hornet/specifications"
+   },
+   "features": {
+    "values": [
+     "Single-channel ABS",
+     "LED headlight",
+     "TFT display",
+     "Bluetooth connectivity",
+     "Turn-by-turn navigation",
+     "USB charging port",
+     "Side stand warning"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb125-hornet/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 124,
+    "seat_height_mm": 796,
+    "source": "https://www.bikedekho.com/honda/cb125-hornet/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "college",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "first_time",
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb350": {
+   "variant_prices": {
+    "values": {
+     "DLX": 197900,
+     "DLX Pro": 200064
+    },
+    "source": "https://www.bikedekho.com/honda/cb350/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 42.17,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/cb350/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Deep Ground Gray",
+     "Mat Axis Gray Metallic",
+     "Rebel Red Metallic",
+     "Blue",
+     "Mat Dune Brown"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb350/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Bluetooth connectivity",
+     "Navigation",
+     "Voice assist",
+     "Immobilizer",
+     "USB charging port",
+     "Honda Selectable Torque Control",
+     "LED headlight"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb350/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 181,
+    "seat_height_mm": 800,
+    "source": "https://www.bikedekho.com/honda/cb350/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides",
+     "commute"
+    ],
+    "rider_fit": [
+     "upgrading",
+     "pillion_comfort"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb350rs": {
+   "variant_prices": {
+    "values": {
+     "DLX": 199900,
+     "DLX Pro": 200429
+    },
+    "source": "https://www.bikedekho.com/honda/cb350rs/price-in-new-delhi",
+    "notes": {
+     "DLX": "BikeDekho lists this variant as STD (product owner: DLX Pro is the higher price)"
+    }
+   },
+   "mileage_kmpl": {
+    "value": 35,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/cb350rs/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Deep Ground Gray",
+     "Mat Axis Gray Metallic",
+     "Red"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb350rs/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Navigation",
+     "Immobilizer",
+     "Honda Selectable Torque Control",
+     "Honda RoadSync",
+     "Emergency Stop Signal",
+     "Voice assist",
+     "LED lighting"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb350rs/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 180,
+    "seat_height_mm": 800,
+    "source": "https://www.bikedekho.com/honda/cb350rs/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides",
+     "commute"
+    ],
+    "rider_fit": [
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb350-hness": {
+   "variant_prices": {
+    "values": {
+     "DLX": 193139,
+     "DLX Pro": 195939
+    },
+    "source": "https://www.bikedekho.com/honda/hness-cb350/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 45.8,
+    "basis": "ARAI (BikeDekho)",
+    "source": "https://www.bikedekho.com/honda/hness-cb350/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Deep Ground Gray",
+     "Precious Red Metallic",
+     "Grey",
+     "Decent Blue Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/hness-cb350/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Bluetooth connectivity",
+     "Navigation",
+     "Voice assist",
+     "Honda Selectable Torque Control",
+     "Honda RoadSync",
+     "Emergency Stop Signal"
+    ],
+    "source": "https://www.bikedekho.com/honda/hness-cb350/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 181,
+    "seat_height_mm": 800,
+    "source": "https://www.bikedekho.com/honda/hness-cb350/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides",
+     "commute"
+    ],
+    "rider_fit": [
+     "upgrading",
+     "pillion_comfort"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb350c": {
+   "variant_prices": {
+    "values": {
+     "DLX": 200300,
+     "DLX Pro": 200639,
+     "Special Edition": 204700
+    },
+    "source": "https://www.bikedekho.com/honda/cb350c/price-in-new-delhi",
+    "notes": {
+     "DLX": "BikeDekho lists this variant as STD (product owner: DLX Pro is the higher price)"
+    }
+   },
+   "mileage_kmpl": {
+    "value": 42.17,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/cb350c/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Deep Ground Gray",
+     "Rebel Red Metallic",
+     "Mat Axis Gray Metallic",
+     "Mat Dune Brown",
+     "Red Metallic (Special Edition)",
+     "Mat Dune Brown (Special Edition)"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb350c/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Honda Selectable Torque Control",
+     "Emergency Stop Signal",
+     "LED headlight and taillight",
+     "Immobilizer",
+     "USB charging port",
+     "Split seat"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb350c/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 186,
+    "seat_height_mm": 800,
+    "source": "https://www.bikedekho.com/honda/cb350c/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides",
+     "commute"
+    ],
+    "rider_fit": [
+     "upgrading",
+     "pillion_comfort"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb500": {
+   "variant_prices": {
+    "values": {
+     "Alloy": 275000,
+     "Spoke tubeless": 299900,
+     "Spoke tubeless with graphics": 301900
+    },
+    "source": "https://www.bikedekho.com/honda/cb-500/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 28,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Mat Steel Silver Metallic",
+     "Pearl Deep Ground Gray",
+     "Rebel Red Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb-500/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "LED headlight, indicators and taillight",
+     "Digital speedometer",
+     "Honda Selectable Torque Control",
+     "Alloy or spoke wheels",
+     "Tubeless tyres"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb-500/specifications"
+   },
+   "size_estimate": {
+    "kerb_weight_kg": 190,
+    "seat_height_mm": 790,
+    "why": "no published figures"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cb750-hornet": {
+   "variant_prices": {
+    "values": {
+     "E-Clutch": 1049000
+    },
+    "source": "https://www.bikedekho.com/honda/cb-750-hornet/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 23.25,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/cb-750-hornet/specifications"
+   },
+   "colours": {
+    "values": [
+     "Graphite Black"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb-750-hornet/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Quickshifter",
+     "Riding modes",
+     "Navigation",
+     "Bluetooth connectivity",
+     "5-inch colour TFT display",
+     "Honda RoadSync"
+    ],
+    "source": "https://www.bikedekho.com/honda/cb-750-hornet/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 196,
+    "seat_height_mm": 795,
+    "source": "https://www.bikedekho.com/honda/cb-750-hornet/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "long_rides",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "experienced"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "cbr1000rr-r-sp": {
+   "variant_prices": {
+    "values": {
+     "SP": 3350000
+    },
+    "source": "https://www.bikedekho.com/honda/cbr1000rr-r-fireblade-sp/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 15,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Grand Prix Red"
+    ],
+    "source": "https://www.bikedekho.com/honda/cbr1000rr-r-fireblade-sp/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Riding modes",
+     "Power modes",
+     "Quickshifter",
+     "Wheelie control",
+     "Bluetooth connectivity",
+     "Navigation"
+    ],
+    "source": "https://www.bikedekho.com/honda/cbr1000rr-r-fireblade-sp/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 201,
+    "seat_height_mm": 830,
+    "source": "https://www.bikedekho.com/honda/cbr1000rr-r-fireblade-sp/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "experienced"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "dio-110": {
+   "variant_prices": {
+    "values": {
+     "STD": 71085,
+     "DLX": 83512
+    },
+    "source": "https://www.bikedekho.com/honda/dio/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 50,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/dio/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Mat Marvel Blue",
+     "Imperial Red Metallic",
+     "Pearl Deep Ground Gray",
+     "Mat Axis Gray Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/dio/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 106,
+    "seat_height_mm": 765,
+    "source": "https://www.bikedekho.com/honda/dio/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "family_errands",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "dio-125": {
+   "variant_prices": {
+    "values": {
+     "DLX": 89009,
+     "H-Smart": 93960,
+     "X-Edition": 88133
+    },
+    "source": "https://www.bikedekho.com/honda/dio-125/price-in-new-delhi",
+    "notes": {
+     "DLX": "BikeDekho lists this variant as STD"
+    }
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Imperial Red",
+     "Mat Marvel Blue Metallic",
+     "Pearl Siren Blue",
+     "Pearl Sports Yellow",
+     "Pearl Deep Ground Gray (Emblem, Stripe, X-Edition)"
+    ],
+    "source": "https://www.bikedekho.com/honda/dio-125/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 105,
+    "seat_height_mm": null,
+    "source": "https://www.bikedekho.com/honda/dio-125/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "family_errands",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "gold-wing-tour": {
+   "variant_prices": {
+    "values": {
+     "Tour DCT": 4430000
+    },
+    "source": "https://www.bikedekho.com/honda/gold-wing/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 16,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Gunmetal Black Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/gold-wing/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Cruise control",
+     "Navigation",
+     "Riding modes",
+     "Heated grips",
+     "Tyre pressure monitoring",
+     "Hill hold",
+     "Airbag"
+    ],
+    "source": "https://www.bikedekho.com/honda/gold-wing/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 393,
+    "seat_height_mm": 745,
+    "source": "https://www.bikedekho.com/honda/gold-wing/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "long_rides"
+    ],
+    "rider_fit": [
+     "experienced",
+     "pillion_comfort"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "hornet-2-0": {
+   "variant_prices": {
+    "values": {
+     "Standard": 150301
+    },
+    "source": "https://www.bikedekho.com/honda/hornet-20/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 57.35,
+    "basis": "BikeDekho city test",
+    "source": "https://www.bikedekho.com/honda/hornet-20/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Radiant Red Metallic",
+     "Mat Axis Gray Metallic",
+     "Athletic Blue Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/hornet-20/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Bluetooth connectivity",
+     "Navigation",
+     "4.2-inch TFT display",
+     "Honda RoadSync",
+     "Honda Selectable Torque Control",
+     "LED headlight",
+     "USB charging port"
+    ],
+    "source": "https://www.bikedekho.com/honda/hornet-20/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 142,
+    "seat_height_mm": 790,
+    "source": "https://www.bikedekho.com/honda/hornet-20/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "college",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "livo": {
+   "variant_prices": {
+    "values": {
+     "Drum": 80330,
+     "Disc": 82897
+    },
+    "source": "https://www.bikedekho.com/honda/livo/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 70,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/livo/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Siren Blue"
+    ],
+    "source": "https://www.bikedekho.com/honda/livo/specifications"
+   },
+   "features": {
+    "values": [
+     "Combi Brake System",
+     "Digital instrument console",
+     "Service due indicator",
+     "Real-time mileage indicator",
+     "Distance to empty",
+     "Side stand warning",
+     "Saree guard"
+    ],
+    "source": "https://www.bikedekho.com/honda/livo/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 112,
+    "seat_height_mm": 790,
+    "source": "https://www.bikedekho.com/honda/livo/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "delivery",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "nx200": {
+   "variant_prices": {
+    "values": {
+     "Standard": 161296
+    },
+    "source": "https://www.bikedekho.com/honda/nx200/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 35,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/nx200/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Radiant Red Metallic",
+     "Athletic Blue Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/nx200/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Bluetooth connectivity",
+     "Navigation",
+     "TFT display",
+     "Honda Selectable Torque Control",
+     "Adjustable windshield"
+    ],
+    "source": "https://www.bikedekho.com/honda/nx200/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 148,
+    "seat_height_mm": 810,
+    "source": "https://www.bikedekho.com/honda/nx200/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "nx500": {
+   "variant_prices": {
+    "values": {
+     "E-Clutch": 743900
+    },
+    "source": "https://www.bikedekho.com/honda/nx500/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 25,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Mat Gunpowder Black Metallic",
+     "Pearl Horizon White"
+    ],
+    "source": "https://www.bikedekho.com/honda/nx500/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Traction control",
+     "Bluetooth connectivity",
+     "Navigation",
+     "Honda RoadSync",
+     "Honda Selectable Torque Control",
+     "5-inch colour TFT display",
+     "E-Clutch",
+     "USB charging port"
+    ],
+    "source": "https://www.bikedekho.com/honda/nx500/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 199,
+    "seat_height_mm": 830,
+    "source": "https://www.bikedekho.com/honda/nx500/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "long_rides",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "experienced"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "qc1": {
+   "variant_prices": {
+    "values": {
+     "Standard": 90708
+    },
+    "source": "https://www.bikedekho.com/honda/qc1/price-in-new-delhi",
+    "notes": {}
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Pearl Misty White",
+     "Matt Foggy Silver Metallic",
+     "Pearl Shallow Blue",
+     "Pearl Serenity Blue"
+    ],
+    "source": "https://www.bikedekho.com/honda/qc1/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 89.5,
+    "seat_height_mm": 704,
+    "source": "https://www.bikedekho.com/honda/qc1/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "family_errands",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "qc3": {
+   "variant_prices": {
+    "values": {
+     "Standard": 135000
+    },
+    "source": "https://www.bikedekho.com/honda/qc3/price-in-new-delhi",
+    "notes": {}
+   },
+   "colours": {
+    "values": [
+     "Pearl Precious White",
+     "Matt Photon Gray Metallic",
+     "Pearl Shallow Blue",
+     "Pearl Siren Blue"
+    ],
+    "source": "https://www.bikedekho.com/honda/qc3/specifications"
+   },
+   "size_estimate": {
+    "kerb_weight_kg": 100,
+    "seat_height_mm": 770,
+    "why": "no published figures"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "family_errands",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "shorter_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "rebel-300": {
+   "variant_prices": {
+    "values": {
+     "Standard": 222000,
+     "E-Clutch": 262000
+    },
+    "source": "https://www.bikedekho.com/honda/rebel-300/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 30,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Black",
+     "Silver"
+    ],
+    "source": "https://www.bikedekho.com/honda/rebel-300/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "Turn-by-turn navigation",
+     "Digital instrument console",
+     "LED lighting",
+     "Alloy wheels",
+     "Tubeless tyres"
+    ],
+    "source": "https://www.bikedekho.com/honda/rebel-300/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": null,
+    "seat_height_mm": 690,
+    "source": "https://www.bikedekho.com/honda/rebel-300/specifications"
+   },
+   "size_estimate": {
+    "kerb_weight_kg": 171,
+    "seat_height_mm": null,
+    "why": "BikeDekho shows 191 kg (the Rebel 500's figure); Honda's global spec is 171 kg"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "shorter_riders",
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "shine-100": {
+   "variant_prices": {
+    "values": {
+     "Standard": 65642
+    },
+    "source": "https://www.bikedekho.com/honda/shine-100/price-in-new-delhi",
+    "notes": {}
+   },
+   "colours": {
+    "values": [
+     "Black with Orange",
+     "Black with Red",
+     "Black with Gray",
+     "Black with Blue",
+     "Black with Green"
+    ],
+    "source": "https://www.bikedekho.com/honda/shine-100/specifications"
+   },
+   "features": {
+    "values": [
+     "Combi Brake System",
+     "Self and kick start",
+     "Fuel injection",
+     "Gear position indicator",
+     "Side stand warning",
+     "Saree guard"
+    ],
+    "source": "https://www.bikedekho.com/honda/shine-100/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 99,
+    "seat_height_mm": 786,
+    "source": "https://www.bikedekho.com/honda/shine-100/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "delivery",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "shine-100-dx": {
+   "variant_prices": {
+    "values": {
+     "DX": 72146
+    },
+    "source": "https://www.bikedekho.com/honda/shine-100-dx/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 65,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/shine-100-dx/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 103,
+    "seat_height_mm": 786,
+    "source": "https://www.bikedekho.com/honda/shine-100-dx/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "delivery",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "shine-125": {
+   "variant_prices": {
+    "values": {
+     "Drum": 83422,
+     "Disc": 87782,
+     "Limited Edition": 88081
+    },
+    "source": "https://www.bikedekho.com/honda/shine/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 55,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/shine/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Rebel Red Metallic",
+     "Decent Blue Metallic",
+     "Geny Gray Metallic",
+     "Pearl Siren Blue",
+     "Mat Axis Gray Metallic",
+     "Pearl Siren Blue (Limited Edition)"
+    ],
+    "source": "https://www.bikedekho.com/honda/shine/specifications"
+   },
+   "features": {
+    "values": [
+     "Combi Brake System",
+     "Digital instrument console",
+     "Real-time mileage indicator",
+     "Distance to empty",
+     "Side stand warning",
+     "Service due indicator",
+     "Fuel injection"
+    ],
+    "source": "https://www.bikedekho.com/honda/shine/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 113,
+    "seat_height_mm": 791,
+    "source": "https://www.bikedekho.com/honda/shine/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "delivery",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time",
+     "budget"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "sp-125": {
+   "variant_prices": {
+    "values": {
+     "Drum": 90498,
+     "Disc": 98086
+    },
+    "source": "https://www.bikedekho.com/honda/sp125/price-in-new-delhi",
+    "notes": {
+     "Drum": "BikeDekho lists this variant as STD (same price as BikeWale's Drum)",
+     "Disc": "BikeDekho lists this variant as DLX"
+    }
+   },
+   "colours": {
+    "values": [
+     "Mat Axis Gray Metallic",
+     "Mat Marvel Blue Metallic",
+     "Pearl Siren Blue",
+     "Imperial Red Metallic",
+     "Black with Red Stripe"
+    ],
+    "source": "https://www.bikedekho.com/honda/sp125/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 116,
+    "seat_height_mm": 790,
+    "source": "https://www.bikedekho.com/honda/sp125/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "college"
+    ],
+    "rider_fit": [
+     "first_time"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "sp-160": {
+   "variant_prices": {
+    "values": {
+     "Single Disc": 118060,
+     "Double Disc": 123570
+    },
+    "source": "https://www.bikedekho.com/honda/sp160/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 50,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/sp160/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Radiant Red Metallic",
+     "Athletic Blue Metallic",
+     "Pearl Deep Ground Gray"
+    ],
+    "source": "https://www.bikedekho.com/honda/sp160/specifications"
+   },
+   "features": {
+    "values": [
+     "Single-channel ABS",
+     "Bluetooth connectivity",
+     "Turn-by-turn navigation",
+     "4.2-inch TFT display",
+     "LED headlight and taillight",
+     "Honda RoadSync"
+    ],
+    "source": "https://www.bikedekho.com/honda/sp160/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 138,
+    "seat_height_mm": 796,
+    "source": "https://www.bikedekho.com/honda/sp160/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "college",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "upgrading"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "unicorn": {
+   "variant_prices": {
+    "values": {
+     "Standard": 115832
+    },
+    "source": "https://www.bikedekho.com/honda/unicorn/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 50,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/unicorn/specifications"
+   },
+   "colours": {
+    "values": [
+     "Pearl Igneous Black",
+     "Radiant Red Metallic",
+     "Mat Axis Gray Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/unicorn/specifications"
+   },
+   "features": {
+    "values": [
+     "Single-channel ABS",
+     "LED headlight",
+     "Digital instrument console",
+     "Real-time mileage indicator",
+     "Side stand warning",
+     "USB charging port"
+    ],
+    "source": "https://www.bikedekho.com/honda/unicorn/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 139,
+    "seat_height_mm": 798,
+    "source": "https://www.bikedekho.com/honda/unicorn/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "commute",
+     "long_rides",
+     "delivery"
+    ],
+    "rider_fit": [
+     "upgrading",
+     "pillion_comfort"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "xl750-transalp": {
+   "variant_prices": {
+    "values": {
+     "E-Clutch": 1320000
+    },
+    "source": "https://www.bikedekho.com/honda/xl750-transalp-2025/price-in-new-delhi",
+    "notes": {}
+   },
+   "mileage_kmpl": {
+    "value": 22,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "features": {
+    "values": [
+     "Switchable dual-channel ABS",
+     "Traction control",
+     "Riding modes (Gravel, Sport, Standard, Rain)",
+     "Bluetooth connectivity",
+     "Navigation",
+     "5-inch TFT display",
+     "Adjustable windscreen",
+     "Honda Selectable Torque Control"
+    ],
+    "source": "https://www.bikedekho.com/honda/xl750-transalp-2025/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 216,
+    "seat_height_mm": 850,
+    "source": "https://www.bikedekho.com/honda/xl750-transalp-2025/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "long_rides",
+     "weekend_fun"
+    ],
+    "rider_fit": [
+     "experienced",
+     "taller_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "rebel-500": {
+   "mileage_kmpl": {
+    "value": 27,
+    "basis": "BikeDekho overall",
+    "source": "https://www.bikedekho.com/honda/rebel500/specifications"
+   },
+   "colours": {
+    "values": [
+     "Matte Black Metallic"
+    ],
+    "source": "https://www.bikedekho.com/honda/rebel-500/specifications"
+   },
+   "features": {
+    "values": [
+     "Dual-channel ABS",
+     "LED projector headlight",
+     "Digital instrument console",
+     "Gear position indicator",
+     "USB charging port"
+    ],
+    "source": "https://www.bikedekho.com/honda/rebel-500/specifications"
+   },
+   "size": {
+    "kerb_weight_kg": 191,
+    "seat_height_mm": 690,
+    "source": "https://www.bikedekho.com/honda/rebel-500/specifications"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "shorter_riders",
+     "experienced"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   },
+   "status": {
+    "value": "on_sale",
+    "decided": "2026-10-20, product owner: on sale (launched May 2025)"
+   },
+   "variant_prices": {
+    "values": {
+     "Standard": 512000
+    },
+    "source": "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-launches-all-new-rebel-500",
+    "city": "Gurugram",
+    "notes": {
+     "Standard": "Launch price, ex-showroom Gurugram; sold in Gurugram, Mumbai and Bengaluru"
+    }
+   },
+   "official_url": "https://www.honda2wheelersindia.com/news/honda-motorcycle-scooter-india-launches-all-new-rebel-500"
+  },
+  "xr300l": {
+   "mileage_kmpl": {
+    "value": 30,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "Shasta White",
+     "Extreme Red"
+    ],
+    "source": "https://www.bikedekho.com/honda/xr-300l/specifications"
+   },
+   "features": {
+    "values": [
+     "Switchable dual-channel ABS",
+     "Honda Selectable Torque Control",
+     "LED headlight",
+     "Pro-link rear suspension",
+     "Spoke wheels",
+     "Front and rear disc brakes"
+    ],
+    "source": "https://www.bikedekho.com/honda/xr-300l/specifications"
+   },
+   "size_estimate": {
+    "kerb_weight_kg": 160,
+    "seat_height_mm": 860,
+    "why": "no published figures"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "experienced",
+     "taller_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  },
+  "xr300-rally": {
+   "mileage_kmpl": {
+    "value": 30,
+    "basis": "estimate (no published figure)",
+    "estimate": true
+   },
+   "colours": {
+    "values": [
+     "True Black",
+     "Extreme Red"
+    ],
+    "source": "https://www.bikedekho.com/honda/xr-300-rally/specifications"
+   },
+   "features": {
+    "values": [
+     "Switchable dual-channel ABS",
+     "Honda Selectable Torque Control",
+     "Honda RoadSync",
+     "LED headlight",
+     "Pro-link rear suspension",
+     "Spoke wheels"
+    ],
+    "source": "https://www.bikedekho.com/honda/xr-300-rally/specifications"
+   },
+   "size_estimate": {
+    "kerb_weight_kg": 165,
+    "seat_height_mm": 860,
+    "why": "no published figures"
+   },
+   "fit": {
+    "use_cases": [
+     "weekend_fun",
+     "long_rides"
+    ],
+    "rider_fit": [
+     "experienced",
+     "taller_riders"
+    ],
+    "approved": true,
+    "source": "editorial, approved by the product owner 2026-10-20"
+   }
+  }
+ },
+ "on_road": {
+  "city": "Delhi",
+  "as_of": "2026-10-20",
+  "replaces_models": [
+   "activa-110",
+   "activa-125",
+   "adv160",
+   "cb1000-hornet-sp",
+   "cb125-hornet",
+   "cb350",
+   "cb350-hness",
+   "cb350c",
+   "cb350rs",
+   "cb500",
+   "cb750-hornet",
+   "cbr1000rr-r-sp",
+   "dio-110",
+   "dio-125",
+   "gold-wing-tour",
+   "hornet-2-0",
+   "livo",
+   "nx200",
+   "nx500",
+   "rebel-300",
+   "shine-100",
+   "shine-100-dx",
+   "shine-125",
+   "sp-125",
+   "sp-160",
+   "unicorn",
+   "xl750-transalp"
+  ],
+  "entries": [
+   {
+    "bike_id": "activa-110",
+    "variant_label": "STD",
+    "on_road_inr": 90699,
+    "ex_showroom_basis_inr": 76358,
+    "rto_inr": 7178,
+    "insurance_inr": 5999,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 1164
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa/price-in-new-delhi"
+   },
+   {
+    "bike_id": "activa-110",
+    "variant_label": "25 Year Anniversary Edition",
+    "on_road_inr": 100570,
+    "ex_showroom_basis_inr": 85339,
+    "rto_inr": 7897,
+    "insurance_inr": 6170,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 1164
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa/price-in-new-delhi"
+   },
+   {
+    "bike_id": "activa-110",
+    "variant_label": "DLX",
+    "on_road_inr": 102407,
+    "ex_showroom_basis_inr": 87011,
+    "rto_inr": 8030,
+    "insurance_inr": 6202,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 1164
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa/price-in-new-delhi"
+   },
+   {
+    "bike_id": "activa-110",
+    "variant_label": "H-Smart",
+    "on_road_inr": 107321,
+    "ex_showroom_basis_inr": 91482,
+    "rto_inr": 8388,
+    "insurance_inr": 6287,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 1164
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa/price-in-new-delhi"
+   },
+   {
+    "bike_id": "activa-125",
+    "variant_label": "25 Year Anniversary Edition",
+    "on_road_inr": 104991,
+    "ex_showroom_basis_inr": 89656,
+    "rto_inr": 8242,
+    "insurance_inr": 6252,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 841
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa-125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "activa-125",
+    "variant_label": "DLX",
+    "on_road_inr": 107215,
+    "ex_showroom_basis_inr": 91679,
+    "rto_inr": 8404,
+    "insurance_inr": 6291,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 841
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa-125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "activa-125",
+    "variant_label": "H-Smart",
+    "on_road_inr": 112097,
+    "ex_showroom_basis_inr": 96122,
+    "rto_inr": 8759,
+    "insurance_inr": 6375,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 841
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/activa-125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "adv160",
+    "variant_label": "STD",
+    "on_road_inr": 196219,
+    "ex_showroom_basis_inr": 170000,
+    "rto_inr": 14670,
+    "insurance_inr": 11549,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/adv-160/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb1000-hornet-sp",
+    "variant_label": "STD",
+    "on_road_inr": 1474022,
+    "ex_showroom_basis_inr": 1329390,
+    "rto_inr": 107421,
+    "insurance_inr": 37211,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb-1000-hornet/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb125-hornet",
+    "variant_label": "STD",
+    "on_road_inr": 133432,
+    "ex_showroom_basis_inr": 115485,
+    "rto_inr": 10308,
+    "insurance_inr": 6744,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/cb125-hornet/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350",
+    "variant_label": "STD",
+    "on_road_inr": 223858,
+    "ex_showroom_basis_inr": 195200,
+    "rto_inr": 16686,
+    "insurance_inr": 11972,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350",
+    "variant_label": "DLX",
+    "on_road_inr": 226820,
+    "ex_showroom_basis_inr": 197900,
+    "rto_inr": 16902,
+    "insurance_inr": 12018,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350",
+    "variant_label": "Chrome",
+    "on_road_inr": 229014,
+    "ex_showroom_basis_inr": 199900,
+    "rto_inr": 17062,
+    "insurance_inr": 12052,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350",
+    "variant_label": "DLX Pro",
+    "on_road_inr": 229193,
+    "ex_showroom_basis_inr": 200064,
+    "rto_inr": 17075,
+    "insurance_inr": 12054,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350rs",
+    "variant_label": "STD",
+    "on_road_inr": 229014,
+    "ex_showroom_basis_inr": 199900,
+    "rto_inr": 17062,
+    "insurance_inr": 12052,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350rs/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350rs",
+    "variant_label": "DLX Pro",
+    "on_road_inr": 229593,
+    "ex_showroom_basis_inr": 200429,
+    "rto_inr": 17104,
+    "insurance_inr": 12060,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350rs/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350rs",
+    "variant_label": "DLX",
+    "on_road_inr": 231865,
+    "ex_showroom_basis_inr": 202500,
+    "rto_inr": 17270,
+    "insurance_inr": 12095,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350rs/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350-hness",
+    "variant_label": "DLX",
+    "on_road_inr": 221598,
+    "ex_showroom_basis_inr": 193139,
+    "rto_inr": 16521,
+    "insurance_inr": 11938,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/hness-cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350-hness",
+    "variant_label": "DLX Pro",
+    "on_road_inr": 224669,
+    "ex_showroom_basis_inr": 195939,
+    "rto_inr": 16745,
+    "insurance_inr": 11985,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/hness-cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350-hness",
+    "variant_label": "DLX Pro Chrome",
+    "on_road_inr": 226863,
+    "ex_showroom_basis_inr": 197939,
+    "rto_inr": 16905,
+    "insurance_inr": 12019,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/hness-cb350/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350c",
+    "variant_label": "STD",
+    "on_road_inr": 229452,
+    "ex_showroom_basis_inr": 200300,
+    "rto_inr": 17094,
+    "insurance_inr": 12058,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350c/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350c",
+    "variant_label": "DLX Pro",
+    "on_road_inr": 229824,
+    "ex_showroom_basis_inr": 200639,
+    "rto_inr": 17121,
+    "insurance_inr": 12064,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350c/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350c",
+    "variant_label": "DLX Pro Special Edition",
+    "on_road_inr": 232018,
+    "ex_showroom_basis_inr": 202639,
+    "rto_inr": 17281,
+    "insurance_inr": 12098,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350c/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350c",
+    "variant_label": "DLX",
+    "on_road_inr": 232085,
+    "ex_showroom_basis_inr": 202700,
+    "rto_inr": 17286,
+    "insurance_inr": 12099,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350c/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb350c",
+    "variant_label": "Special Edition",
+    "on_road_inr": 234278,
+    "ex_showroom_basis_inr": 204700,
+    "rto_inr": 17446,
+    "insurance_inr": 12132,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb350c/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb500",
+    "variant_label": "Alloy",
+    "on_road_inr": 319915,
+    "ex_showroom_basis_inr": 275000,
+    "rto_inr": 23070,
+    "insurance_inr": 21845,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb-500/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb500",
+    "variant_label": "Spoke Tubeless",
+    "on_road_inr": 347170,
+    "ex_showroom_basis_inr": 299900,
+    "rto_inr": 25062,
+    "insurance_inr": 22208,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb-500/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb500",
+    "variant_label": "Spoke Tubeless With Stripes",
+    "on_road_inr": 349359,
+    "ex_showroom_basis_inr": 301900,
+    "rto_inr": 25222,
+    "insurance_inr": 22237,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb-500/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cb750-hornet",
+    "variant_label": "E-Clutch",
+    "on_road_inr": 1167115,
+    "ex_showroom_basis_inr": 1049000,
+    "rto_inr": 84990,
+    "insurance_inr": 33125,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cb-750-hornet/price-in-new-delhi"
+   },
+   {
+    "bike_id": "cbr1000rr-r-sp",
+    "variant_label": "STD",
+    "on_road_inr": 3685727,
+    "ex_showroom_basis_inr": 3350000,
+    "rto_inr": 269070,
+    "insurance_inr": 66657,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/cbr1000rr-r-fireblade-sp/price-in-new-delhi"
+   },
+   {
+    "bike_id": "dio-110",
+    "variant_label": "STD",
+    "on_road_inr": 84903,
+    "ex_showroom_basis_inr": 71085,
+    "rto_inr": 6756,
+    "insurance_inr": 5898,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 1164
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/dio/price-in-new-delhi"
+   },
+   {
+    "bike_id": "dio-110",
+    "variant_label": "DLX",
+    "on_road_inr": 98561,
+    "ex_showroom_basis_inr": 83512,
+    "rto_inr": 7750,
+    "insurance_inr": 6135,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 1164
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/dio/price-in-new-delhi"
+   },
+   {
+    "bike_id": "dio-125",
+    "variant_label": "X-Edition",
+    "on_road_inr": 103317,
+    "ex_showroom_basis_inr": 88133,
+    "rto_inr": 8120,
+    "insurance_inr": 6223,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 841
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/dio-125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "dio-125",
+    "variant_label": "STD",
+    "on_road_inr": 104280,
+    "ex_showroom_basis_inr": 89009,
+    "rto_inr": 8190,
+    "insurance_inr": 6240,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 841
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/dio-125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "dio-125",
+    "variant_label": "H-Smart",
+    "on_road_inr": 109721,
+    "ex_showroom_basis_inr": 93960,
+    "rto_inr": 8586,
+    "insurance_inr": 6334,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 841
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/dio-125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "gold-wing-tour",
+    "variant_label": "STD",
+    "on_road_inr": 4867866,
+    "ex_showroom_basis_inr": 4430000,
+    "rto_inr": 355470,
+    "insurance_inr": 82396,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/gold-wing/price-in-new-delhi"
+   },
+   {
+    "bike_id": "hornet-2-0",
+    "variant_label": "STD",
+    "on_road_inr": 175508,
+    "ex_showroom_basis_inr": 150301,
+    "rto_inr": 13094,
+    "insurance_inr": 11218,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/hornet-20/price-in-new-delhi"
+   },
+   {
+    "bike_id": "livo",
+    "variant_label": "Drum",
+    "on_road_inr": 94796,
+    "ex_showroom_basis_inr": 80330,
+    "rto_inr": 7496,
+    "insurance_inr": 6075,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/livo/price-in-new-delhi"
+   },
+   {
+    "bike_id": "livo",
+    "variant_label": "Disc",
+    "on_road_inr": 97616,
+    "ex_showroom_basis_inr": 82897,
+    "rto_inr": 7701,
+    "insurance_inr": 6123,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/livo/price-in-new-delhi"
+   },
+   {
+    "bike_id": "nx200",
+    "variant_label": "STD",
+    "on_road_inr": 187566,
+    "ex_showroom_basis_inr": 161296,
+    "rto_inr": 13973,
+    "insurance_inr": 11402,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/nx200/price-in-new-delhi"
+   },
+   {
+    "bike_id": "nx500",
+    "variant_label": "E-Clutch",
+    "on_road_inr": 833160,
+    "ex_showroom_basis_inr": 743900,
+    "rto_inr": 60582,
+    "insurance_inr": 28678,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/nx500/price-in-new-delhi"
+   },
+   {
+    "bike_id": "rebel-300",
+    "variant_label": "STD",
+    "on_road_inr": 253253,
+    "ex_showroom_basis_inr": 222000,
+    "rto_inr": 18830,
+    "insurance_inr": 12423,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/rebel-300/price-in-new-delhi"
+   },
+   {
+    "bike_id": "rebel-300",
+    "variant_label": "E-Clutch",
+    "on_road_inr": 297126,
+    "ex_showroom_basis_inr": 262000,
+    "rto_inr": 22030,
+    "insurance_inr": 13096,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/rebel-300/price-in-new-delhi"
+   },
+   {
+    "bike_id": "shine-100",
+    "variant_label": "Standard",
+    "on_road_inr": 78653,
+    "ex_showroom_basis_inr": 65642,
+    "rto_inr": 6321,
+    "insurance_inr": 5795,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/shine-100/price-in-new-delhi"
+   },
+   {
+    "bike_id": "shine-100-dx",
+    "variant_label": "STD",
+    "on_road_inr": 84906,
+    "ex_showroom_basis_inr": 72146,
+    "rto_inr": 6841,
+    "insurance_inr": 5919,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/shine-100-dx/price-in-new-delhi"
+   },
+   {
+    "bike_id": "shine-125",
+    "variant_label": "Drum",
+    "on_road_inr": 98193,
+    "ex_showroom_basis_inr": 83422,
+    "rto_inr": 7743,
+    "insurance_inr": 6133,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/shine/price-in-new-delhi"
+   },
+   {
+    "bike_id": "shine-125",
+    "variant_label": "Disc",
+    "on_road_inr": 102986,
+    "ex_showroom_basis_inr": 87782,
+    "rto_inr": 8092,
+    "insurance_inr": 6217,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/shine/price-in-new-delhi"
+   },
+   {
+    "bike_id": "shine-125",
+    "variant_label": "Limited Edition",
+    "on_road_inr": 103314,
+    "ex_showroom_basis_inr": 88081,
+    "rto_inr": 8116,
+    "insurance_inr": 6222,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/shine/price-in-new-delhi"
+   },
+   {
+    "bike_id": "sp-125",
+    "variant_label": "STD",
+    "on_road_inr": 105970,
+    "ex_showroom_basis_inr": 90498,
+    "rto_inr": 8309,
+    "insurance_inr": 6268,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/sp125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "sp-125",
+    "variant_label": "DLX",
+    "on_road_inr": 114310,
+    "ex_showroom_basis_inr": 98086,
+    "rto_inr": 8916,
+    "insurance_inr": 6413,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/sp125/price-in-new-delhi"
+   },
+   {
+    "bike_id": "sp-160",
+    "variant_label": "Single Disc",
+    "on_road_inr": 140144,
+    "ex_showroom_basis_inr": 118060,
+    "rto_inr": 10514,
+    "insurance_inr": 10675,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/sp160/price-in-new-delhi"
+   },
+   {
+    "bike_id": "sp-160",
+    "variant_label": "Double Disc",
+    "on_road_inr": 146188,
+    "ex_showroom_basis_inr": 123570,
+    "rto_inr": 10955,
+    "insurance_inr": 10768,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/sp160/price-in-new-delhi"
+   },
+   {
+    "bike_id": "unicorn",
+    "variant_label": "STD",
+    "on_road_inr": 137701,
+    "ex_showroom_basis_inr": 115832,
+    "rto_inr": 10336,
+    "insurance_inr": 10638,
+    "other_charges": [
+     {
+      "label": "Basic accessories kit",
+      "amount_inr": 895
+     }
+    ],
+    "source": "https://www.bikedekho.com/honda/unicorn/price-in-new-delhi"
+   },
+   {
+    "bike_id": "xl750-transalp",
+    "variant_label": "E-Clutch",
+    "on_road_inr": 1463744,
+    "ex_showroom_basis_inr": 1320000,
+    "rto_inr": 106670,
+    "insurance_inr": 37074,
+    "other_charges": [],
+    "source": "https://www.bikedekho.com/honda/xl750-transalp-2025/price-in-new-delhi"
+   }
+  ]
+ }
+}

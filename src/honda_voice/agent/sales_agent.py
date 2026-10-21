@@ -13,7 +13,10 @@ from honda_voice.agent.prompts import GREETING_TEXT, INTRO, SALES_INSTRUCTIONS, 
 from honda_voice.domain.catalog_view import bike_summary, compare_view, list_item
 from honda_voice.domain.competitors import competitor_pivot
 from honda_voice.domain.datetime_resolve import showroom_status
+from honda_voice.domain.finance import examples as emi_for
 from honda_voice.domain.language import is_language_pick
+from honda_voice.domain.pricing import format_inr_spoken
+from honda_voice.domain.recommend import EXPERIENCE, PRIORITIES, RIDERS, USE_CASES, Need, rank
 from honda_voice.domain.scope import asks_about_price, out_of_scope_topic
 
 logger = logging.getLogger("honda_voice.agent")
@@ -63,7 +66,12 @@ class SalesAgent(MultilingualAgent):
             note = f"The caller is asking about {topic}, which is out of scope: don't answer it or ask which "
             return [note + "model; say the out-of-scope line."]
         facts = self._prefetched_facts(transcript)
-        return [facts] if facts else []
+        out = [facts] if facts else []
+        if self.state.advisor is not None and (
+            line := self.state.advisor.coach_line(self.state.caller_turns)
+        ):
+            out.append(line)  # one suggested move from the caller profile (SPEC §20.3)
+        return out
 
     def _fixed_reply(self, transcript: str) -> str | None:
         """The intro, straight from code, when the caller's first turn only picks a language ("Tamil",
@@ -112,6 +120,7 @@ class SalesAgent(MultilingualAgent):
         if len(matches) > 2:
             return None
         competitor, _ = competitor_pivot(transcript)
+        wants_test_ride = "test ride" in transcript.lower() or "testride" in transcript.lower()
         # Comparisons kept adding unasked prices (55+ words, step 14 eval): leave them out unless asked.
         drop_prices = len(matches) == 2 and not asks_about_price(transcript)
         facts = []
@@ -120,7 +129,9 @@ class SalesAgent(MultilingualAgent):
             if drop_prices:
                 fact = {k: v for k, v in fact.items() if k not in PRICE_KEYS and not k.startswith("price")}
                 fact["prices"] = "not asked: don't mention prices"
-            if similar := self.catalog.index.similar(alias):
+            # A test-ride request goes to start_booking, whose agent asks which model; a "which one?" note
+            # here made the agent ask instead of handing over ("test ride the CB350", 2026-10-20 eval).
+            if not wants_test_ride and (similar := self.catalog.index.similar(alias)):
                 fact["similar_models"] = [self.catalog.models[i]["name"] for i in similar]
                 fact["similar_note"] = "The caller used a family name: ask which of these they mean first."
             facts.append(fact)
@@ -192,6 +203,94 @@ class SalesAgent(MultilingualAgent):
                 }
             found.append(compare_view(self.catalog.models[result.bike_ids[0]], self.lang))
         return {"found": True, "a": found[0], "b": found[1]}
+
+    @function_tool
+    async def recommend_bikes(
+        self,
+        use_case: str | None = None,
+        rider: str | None = None,
+        priorities: list[str] | None = None,
+        budget_inr: int | None = None,
+        experience: str | None = None,
+    ) -> dict[str, Any]:
+        """Suggest Honda models for a caller's need when they haven't settled on a model ("a scooter for my
+        mother", "something for office under 90 thousand"). Code ranks the catalog; suggest at most 2.
+
+        Args:
+            use_case: commute, family_errands, long_rides, college, delivery or weekend_fun. Omit if not said.
+            rider: self, parent, child, spouse or other. Omit if not said.
+            priorities: Any of price, mileage, power, ease, comfort, style, electric, safety.
+            budget_inr: The most they want to spend, in rupees ("90 hazaar" -> 90000). Omit if not said.
+            experience: first_two_wheeler, upgrading or replacing. Omit if not said.
+        """
+        profile = self.state.advisor.profile if self.state.advisor is not None else None
+        need = Need(
+            use_case=use_case if use_case in USE_CASES else getattr(profile, "use_case", None),
+            rider=rider if rider in RIDERS else getattr(profile, "rider", None),
+            priorities=tuple(
+                p for p in (priorities or getattr(profile, "priorities", []) or []) if p in PRIORITIES
+            ),
+            budget_inr=budget_inr if budget_inr and budget_inr >= 10_000 else None,
+            experience=experience if experience in EXPERIENCE else getattr(profile, "experience", None),
+        )  # tool arguments win; the caller profile fills what this turn didn't say
+        await self.catalog.wait_ready()
+        picks = rank(self.catalog.models, self.catalog.fit, need)
+        if not picks:
+            return {"found": False, "note": "Ask one question: what they'll use it for, or their budget."}
+        if profile is not None:
+            profile.models_suggested.extend(
+                p.bike_id for p in picks if p.bike_id not in profile.models_suggested
+            )
+        out = []
+        for p in picks:
+            m = self.catalog.models[p.bike_id]
+            item = {
+                "bike_id": p.bike_id, "name": m["name"], "reasons": p.reasons[:3],
+                "ex_showroom_from_spoken": format_inr_spoken(m["price"]["min"], self.lang),
+            }  # fmt: skip
+            if p.over_budget:
+                item["over_budget"] = True
+            out.append(item)
+        note = "Suggest at most 2, one reason each (from reasons), then ask which one interests them."
+        if any(i.get("over_budget") for i in out):
+            note += " Models marked over_budget cost more than their budget: say so."
+        return {"found": True, "picks": out, "note": note}
+
+    @function_tool
+    async def emi_examples(self, model: str, variant: str | None = None) -> dict[str, Any]:
+        """Demo EMI examples for a Honda model (example plans only; the showroom confirms real terms).
+
+        Args:
+            model: The model name as the caller said it.
+            variant: The variant, if the caller named one.
+        """
+        bike_id, _ = await self.catalog.find_one(model)
+        if bike_id is None:
+            return {"found": False, "note": "Ask which Honda model they mean."}
+        m = self.catalog.models[bike_id]
+        prices = {v["name"].lower(): v["ex_showroom_inr"] for v in m["variants"] if v["ex_showroom_inr"]}
+        price = prices.get((variant or "").lower()) or m["price"]["min"]
+        if not price or not self.catalog.schemes:
+            return {"found": False, "note": "No price on record: offer a showroom callback for finance."}
+        plans = []
+        for scheme in self.catalog.schemes:
+            for e in emi_for(scheme, price):
+                plans.append({
+                    "plan": scheme.name, "interest_rate_pct": e.interest_rate_pct,
+                    "tenure_months": e.tenure_months,
+                    "down_payment_spoken": format_inr_spoken(e.down_payment_inr, self.lang),
+                    "emi_spoken": format_inr_spoken(e.emi_inr, self.lang),
+                })  # fmt: skip
+        if self.state.advisor is not None and "emi" not in self.state.advisor.profile.payment_interest:
+            self.state.advisor.profile.payment_interest.append("emi")
+        return {
+            "found": True,
+            "name": m["name"],
+            "price_basis_spoken": format_inr_spoken(price, self.lang),
+            "examples": plans,
+            "note": "Demo examples, not an offer: give one example (down payment, months, EMI, words as "
+            "given) and say the showroom confirms the actual EMI and offers. Others only if asked.",
+        }
 
     @function_tool
     async def check_showroom_open(self, day_ref: str, time_24h: str | None = None) -> dict[str, Any]:

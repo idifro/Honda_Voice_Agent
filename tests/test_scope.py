@@ -9,7 +9,7 @@ from honda_voice.domain.scope import out_of_scope_topic
         ("Meri Activa ki servicing kab karwani chahiye?", "servicing or repairs"),
         ("I need to renew my bike insurance", "insurance renewal or claims"),
         ("ನನ್ನ ಬೈಕ್ insurance renewal ಬಗ್ಗೆ ಹೇಳಿ", "insurance renewal or claims"),
-        ("Shine 100 EMI kitna hoga?", "finance or EMI"),
+        ("Shine 100 EMI kitna hoga?", None),  # in scope since Phase 7 step 3 (emi_examples)
         ("What's the insurance part of the on-road price?", None),  # breakdown question: in scope
         ("Activa 125 ka price kya hai?", None),
         ("Is the showroom open tomorrow?", None),

@@ -4,7 +4,7 @@ A caller talks to a voice agent in the browser, in Tamil, English, Hindi (Hingli
 
 Each diagram appears twice: as plain text, and as draw.io XML. To edit a diagram, open the matching file in [`diagrams/`](diagrams/) with [diagrams.net](https://app.diagrams.net) (File → Open), or paste the XML block into draw.io via Extras → Edit Diagram.
 
-Status: Phases 0–5 built (as of 2026-10-16); Phase 7 (Laya decision layer), Phase 8 (LangGraph) and Phases 10–11 (self-hosted LiveKit and Postgres) are planned.
+Status: Phases 0–5 built (as of 2026-10-16); Phase 7 (sales advisor and leads), Phase 8 (LangGraph) and Phases 10–11 (self-hosted LiveKit and Postgres) are planned.
 
 ---
 
@@ -20,7 +20,7 @@ Status: Phases 0–5 built (as of 2026-10-16); Phase 7 (Laya decision layer), Ph
 | **Azure OpenAI** | Azure, South India region | The LLM that decides what to say and which tool to call. |
 | **Supabase Postgres** | Supabase, Mumbai (ap-south-1) | Source of truth: catalog, showroom hours, test-ride slots, bookings, leads. |
 | **Google Calendar** | Google | Write-only copy of bookings for showroom staff (masked phone). A failure here never affects a booking. |
-| **Laya** (Phase 7, off) | Developer machine GPU, `127.0.0.1:8100` | Planned decision model for judgments such as "did the caller really say yes?". Not in the call path yet. |
+| **Laya** (optional) | Developer machine GPU, `127.0.0.1:8100` | Optional signal provider; replaced by gpt-5.4-nano for caller understanding (SPEC §23.2b). Not in the call path. |
 
 ### Diagram 1: System context
 
@@ -166,7 +166,7 @@ What crosses the internet in each case: caller audio goes browser → LiveKit �
 | **Voice activity detection** | Silero VAD | Local (in the worker) | Detects when someone is speaking |
 | **End-of-turn detection** | LiveKit turn detector (cloud, multilingual) | LiveKit Cloud inference | Endpointing 0.3–1.5 s |
 | **Interruption detection** | LiveKit adaptive interruption | LiveKit Cloud inference | Default "auto" mode; minimum 0.5 s of speech to interrupt |
-| Decision model (Phase 7, off) | Laya `multilingual` (0.4.7) | Local GPU, `127.0.0.1:8100` | Will judge the booking confirmation; never decides prices, dates, slots or phone validity |
+| Caller signals (Phase 7, planned) | gpt-5.4-nano (Azure) | Cloud API, in parallel | Builds the caller profile for the sales advisor; never decides prices, EMIs, dates, slots or phone validity |
 
 Everything that must be exact is done in code, not by a model: spoken prices (`domain/pricing.py`), dates and slots (`domain/datetime_resolve.py`), phone validation, the session language, competitor pivots, out-of-scope detection, and whether a booking is allowed (`domain/booking_guard.py`).
 

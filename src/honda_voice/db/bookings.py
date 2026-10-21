@@ -202,6 +202,36 @@ async def mark_calendar_pending(conn: asyncpg.Connection, reference: str) -> int
     )
 
 
+CONSENT_TEXT_VERSION = "callback-v1-2026-10-20"  # prompts.LEAD_CONSENT; bump when its wording changes
+
+
+async def upsert_customer(
+    conn: asyncpg.Connection, phone: str, name: str | None, language: str, *, callback_consent: bool
+) -> str:
+    """The customer list (SPEC §20.5): one row per number. Consent is only ever added here, never removed by a
+    later call without it; a name already on file is kept unless a new one is given."""
+    return str(
+        await conn.fetchval(
+            "insert into public.customers (phone, name, preferred_language, callback_consent, consent_at, "
+            "consent_text_version) "
+            "values ($1, $2, $3, $4, case when $4 then now() end, case when $4 then $5 end) "
+            "on conflict (phone) do update set name = coalesce(excluded.name, customers.name), "
+            "preferred_language = excluded.preferred_language, last_contact_at = now(), "
+            "callback_consent = customers.callback_consent or excluded.callback_consent, "
+            "consent_at = case when excluded.callback_consent and not customers.callback_consent then now() "
+            "else customers.consent_at end, "
+            "consent_text_version = case when excluded.callback_consent and not customers.callback_consent "
+            "then excluded.consent_text_version else customers.consent_text_version end "
+            "returning id",
+            phone,
+            name,
+            language,
+            callback_consent,
+            CONSENT_TEXT_VERSION,
+        )  # fmt: skip
+    )
+
+
 async def capture_lead(
     conn: asyncpg.Connection,
     reason: str,
@@ -209,9 +239,13 @@ async def capture_lead(
     name: str | None = None,
     phone: str | None = None,
     interest: str | None = None,
+    *,
+    interest_bike_id: str | None = None,
+    call_id: int | None = None,
+    customer_id: str | None = None,
 ) -> int:
     return await conn.fetchval(
-        "insert into public.leads (customer_name, customer_phone, interest, reason, language) "
-        "values ($1, $2, $3, $4, $5) returning id",
-        name, phone, interest, reason, language,
+        "insert into public.leads (customer_name, customer_phone, interest, reason, language, "
+        "interest_bike_id, call_id, customer_id) values ($1, $2, $3, $4, $5, $6, $7, $8::uuid) returning id",
+        name, phone, interest, reason, language, interest_bike_id, call_id, customer_id,
     )  # fmt: skip

@@ -1,0 +1,88 @@
+# Sales advisor (SPEC §20, Phase 7 step 3). `advisor: true` runs real caller signals (nano) after each turn,
+# so the coach line applies from the next turn, as in a live call.
+
+- name: "advisor: scooter for mom, needs not a model (English)"
+  advisor: true
+  turns:
+    - say: "I'm looking for a scooter for my mother, she's in her late forties. It should be easy to handle with good mileage."
+      expect: {tools: [recommend_bikes], says_any: ["Activa", "Dio", "QC1"]}
+    - say: "What's the price of the Activa 110?"
+      expect: {price: true}
+  expect:
+    booked: 0
+
+- name: "advisor: budget commuter (Hinglish)"
+  advisor: true
+  start_language: hi-IN
+  turns:
+    - say: "Main roz office tees kilometre jaata hoon, budget lagbhag nabbe hazaar hai, kaunsi bike lun?"
+      expect: {tools: [recommend_bikes], says_any: ["Shine", "Livo", "Dio", "SP 125", "SP125"]}
+
+- name: "advisor: delivery rider asks for electric (Tamil)"
+  advisor: true
+  start_language: ta-IN
+  turns:
+    - say: "நான் food delivery பண்றேன், petrol செலவு ரொம்ப அதிகம், electric scooter ஏதாவது இருக்கா?"
+      expect: {tools_any: [recommend_bikes, list_bikes], says_any: ["QC1", "QC3", "Activa e"]}
+
+- name: "advisor: price objection gets a demo EMI from the tool (English)"
+  advisor: true
+  turns:
+    - say: "What's the price of the Activa 125?"
+      expect: {price: true}
+    - say: "That's too costly for me. Can I pay in EMI?"
+      expect: {tools: [emi_examples], says_any: ["EMI"], says_all: ["example"]}
+
+- name: "advisor: a browsing caller isn't pushed (English)"
+  advisor: true
+  turns:
+    - say: "Tell me about the CB350."
+    - say: "Just checking for now, maybe I'll buy next year."
+    - say: "What colours does it come in?"
+      expect: {no_tools: [start_booking], says_none: ["test ride"]}
+
+- name: "advisor: a frustrated caller is offered a callback (English)"
+  advisor: true
+  turns:
+    - say: "Which scooter should I buy?"
+    - say: "I've told you already, you keep asking questions. This is useless, I want to talk to a real person!"
+    - say: "Fine."
+      expect: {says_any: ["call you", "callback", "call back"]}
+  expect:
+    booked: 0
+
+- name: "advisor: a ready buyer is offered a test ride (Hinglish)"
+  advisor: true
+  start_language: hi-IN
+  turns:
+    - say: "Shine 100 ki price kya hai?"
+      expect: {price: true}
+    - say: "Achha, mujhe isi hafte lena hai."
+    - say: "Theek hai."
+  expect:
+    booked: 0
+    said_any: ["test ride"]  # offered in turn 2 or 3; a yes may already start the booking
+
+- name: "advisor: callback with consent becomes a lead and a customer (Hinglish)"
+  advisor: true
+  start_language: hi-IN
+  turns:
+    - say: "Activa 125 ke EMI aur offers ke baare mein showroom se koi call kar sakta hai?"
+    - say: "Mera naam Vikram hai, number 9000017171"
+      expect: {tools: [capture_lead], says_any: ["9 0 0 0 0", "9 0 0 0 0, 1 7 1 7 1"]}
+    - say: "Haan, call kar sakte hain"
+      expect: {tools: [capture_lead]}
+  expect:
+    leads: 1
+    consented_customers: 1
+
+- name: "advisor: callback declined at the read-back saves nothing (English)"
+  advisor: true
+  turns:
+    - say: "Can someone from the showroom call me about the Unicorn?"
+    - say: "I'm Asha, 9000018181"
+      expect: {tools: [capture_lead]}
+    - say: "Actually no, please don't call me. I'll visit the showroom myself."
+  expect:
+    leads: 0
+    consented_customers: 0

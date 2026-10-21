@@ -6,7 +6,7 @@ spoken verbatim from tool output, echoed internal tags, a booking only on a turn
 and a licence recorded as yes only when the caller said so. Scenarios add their own per-turn and final checks.
 
 Bookings use the demo showroom with room 'eval-text' and are cancelled and deleted at the end, so slot counts
-are restored; leads with eval phone numbers (90000xxxxx) are deleted too.
+are restored; leads and customers with eval phone numbers (90000xxxxx) are deleted too.
 
 Run: `uv run python -m evals.run_text_evals [--only TEXT] [--tag TAG] [--deployment NAME --model MODEL]`
 """
@@ -31,6 +31,7 @@ from livekit.agents import AgentSession  # noqa: E402
 from livekit.agents import metrics as lk_metrics  # noqa: E402
 from livekit.agents.voice.run_result import ChatMessageEvent, FunctionCallEvent, FunctionCallOutputEvent  # noqa: E402
 
+from honda_voice.agent.advisor import Advisor, build_provider  # noqa: E402
 from honda_voice.agent.call_state import CallState  # noqa: E402
 from honda_voice.agent.prompts import INTRO  # noqa: E402
 from honda_voice.agent.sales_agent import SalesAgent  # noqa: E402
@@ -175,12 +176,19 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
     called: set[str] = set()
     booked = cancelled = 0
     book_errors: set[str] = set()
+    all_replies: list[str] = []
+    call_facts: list = []
     llm_calls: list = []
     said_yes_so_far = False  # a licence answer may be recorded a turn late
 
     def on_metrics(ev) -> None:
         if isinstance(ev.metrics, lk_metrics.LLMMetrics) and not ev.metrics.cancelled:
             llm_calls.append(ev.metrics)
+
+    advisor = None
+    if sc.get("advisor"):  # real signals (nano) between turns, as in a live call (SPEC §20)
+        advisor = Advisor(state, build_provider(s), mode="on")
+        state.advisor = advisor
 
     print(f"\n=== {sc['name']}")
     async with AgentSession(llm=llm) as session:
@@ -206,6 +214,12 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
             offered_before = len(state.booking.offered)
             result = await session.run(user_input=text)
             elapsed = time.perf_counter() - t0
+            if advisor is not None:  # live: the answers arrive while the reply plays, before the next turn
+                items = list(session.history.items)
+                user = next((it for it in reversed(items) if getattr(it, "role", None) == "user"), None)
+                if user is not None:
+                    advisor.on_item(user, items)
+                    await advisor.settle()
             res.turns += 1
             if llm_calls:
                 res.first_ttfts.append(llm_calls[0].ttft)
@@ -228,6 +242,7 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
                 for e in result.events
                 if isinstance(e, ChatMessageEvent) and e.item.role == "assistant"
             )
+            all_replies.append(reply)
             cleaner = SpeechCleaner(state.lang)
             spoken = cleaner.feed(reply) + cleaner.flush()
             called |= set(names)
@@ -274,7 +289,8 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
             facts += [bike_summary(catalog.models[i], state.lang) for i in catalog.mentioned(text)]
             if (pivot := competitor_pivot(text)[1]) and not catalog.mentioned(text):  # pre-fetched pivot
                 facts.append(bike_summary(catalog.models[pivot], state.lang))
-            prices = list(spoken_values(facts))
+            call_facts.extend(facts)  # a price repeated from an earlier turn's tool output is still verbatim
+            prices = list(spoken_values(call_facts))
             mentions_rupees = any(w in reply for w in RUPEE_WORDS)
             if mentions_rupees and not any(price_spoken(reply, p) for p in prices):
                 problems.append(f"price not spoken verbatim from a tool (tool gave {prices[:4]})")
@@ -287,6 +303,10 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
                     problems.append(f"expected tool {t}")
             if exp.get("slots_checked") and len(state.booking.offered) == offered_before:
                 problems.append("expected a slot search (check_slots, or in code at the handoff)")
+            if want := exp.get("time_24h"):  # the time the LLM extracted (rule 5: code resolves it)
+                got = [json.loads(c.arguments or "{}").get("time_24h") for c in calls]
+                if want not in got:
+                    problems.append(f"expected time_24h {want}, tools got {[g for g in got if g]}")
             if (any_of := exp.get("tools_any")) and not set(any_of) & set(names):
                 problems.append(f"expected one of tools {any_of}")
             for t in exp.get("no_tools", []):
@@ -328,6 +348,8 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
     for t in exp.get("no_tools", []):
         if t in called:
             res.problems.append(f"tool {t} must not be called")
+    if (any_of := exp.get("said_any")) and not any(contains(r, w) for r in all_replies for w in any_of):
+        res.problems.append(f"no reply in the call mentioned one of {any_of}")
     for err in exp.get("book_errors", []):
         if err not in book_errors:
             res.problems.append(f"expected book_test_ride error {err}")
@@ -341,6 +363,15 @@ async def run_scenario(sc: dict[str, Any], catalog: Catalog, pool, llm) -> Resul
             )  # fmt: skip
         if n != exp["leads"]:
             res.problems.append(f"leads saved {n}, expected {exp['leads']}")
+    if "consented_customers" in exp:  # the customer list: callback consent recorded with its time and text
+        async with pool.acquire() as conn:
+            n = await conn.fetchval(
+                "select count(*) from public.customers where phone like $1 and callback_consent "
+                "and consent_at >= $2 and consent_text_version is not null",
+                EVAL_PHONE_PREFIX + "%", started,
+            )  # fmt: skip
+        if n != exp["consented_customers"]:
+            res.problems.append(f"consented customers {n}, expected {exp['consented_customers']}")
     for n in res.notes:
         print(f"       · {n}")
     for p in res.problems:
@@ -391,7 +422,17 @@ async def cleanup(pool, started) -> None:
             "delete from public.leads where created_at >= $1 and customer_phone like $2",
             started, EVAL_PHONE_PREFIX + "%",
         )  # fmt: skip
-    print(f"\ncleanup: cancelled {len(rows)} bookings, {deleted.lower()}, leads {leads.lower()}")
+        # Eval customers: only rows nothing else points at (a pre-call booking may still reference one).
+        customers = await conn.execute(
+            "delete from public.customers c where c.phone like $1 "
+            "and not exists (select 1 from public.bookings b where b.customer_id = c.id) "
+            "and not exists (select 1 from public.leads l where l.customer_id = c.id)",
+            EVAL_PHONE_PREFIX + "%",
+        )
+    print(
+        f"\ncleanup: cancelled {len(rows)} bookings, {deleted.lower()}, leads {leads.lower()}, "
+        f"customers {customers.lower()}"
+    )
 
 
 async def main() -> int:

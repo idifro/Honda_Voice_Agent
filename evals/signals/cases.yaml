@@ -1,0 +1,331 @@
+# Labelled caller turns for the signal provider (SPEC §20.8): 25 situations x 6 languages = 150 turns,
+# written the way Sarvam codemix transcribes them (native script, English words in Latin). Only questions
+# with a clear answer are labelled; "unknown" labels check that nothing is invented. `context` holds earlier
+# turns (caller/agent) per language for multi-turn cases. Run: uv run python -m evals.signals_labelled
+
+- id: mom-scooter
+  labels: {intent: recommendation, rider: parent, priorities: [ease, mileage], use_case: family_errands}
+  text:
+    en: I'm looking for a scooter for my mother, she is in her late forties, it should be easy to handle and give good mileage, for going to the market.
+    hi: मेरी माँ के लिए scooty चाहिए, वो late forties में हैं, handle करना easy हो और mileage अच्छा हो, market जाने के लिए।
+    ta: என் அம்மாவுக்கு ஒரு scooty வேணும், அவங்களுக்கு நாற்பத்தி எட்டு வயசு, handle பண்ண easy-ஆ இருக்கணும், mileage நல்லா இருக்கணும், market போறதுக்கு.
+    te: మా అమ్మ కోసం ఒక scooty కావాలి, ఆమెకు నలభై ఎనిమిది ఏళ్ళు, handle చేయడం easy గా ఉండాలి, mileage బాగుండాలి, market కి వెళ్ళడానికి.
+    ml: എന്റെ അമ്മയ്ക്ക് ഒരു scooty വേണം, അമ്മയ്ക്ക് നാല്പത്തിയെട്ട് വയസ്സായി, handle ചെയ്യാൻ easy ആയിരിക്കണം, mileage നല്ലതായിരിക്കണം, market-ൽ പോകാൻ.
+    kn: ನನ್ನ ಅಮ್ಮನಿಗೆ ಒಂದು scooty ಬೇಕು, ಅವರಿಗೆ ನಲವತ್ತೆಂಟು ವರ್ಷ, handle ಮಾಡೋಕೆ easy ಆಗಿರಬೇಕು, mileage ಚೆನ್ನಾಗಿರಬೇಕು, market ಗೆ ಹೋಗೋಕೆ.
+
+- id: commute-budget
+  labels: {intent: recommendation, use_case: commute, budget_inr: 90000, rider: self}
+  text:
+    en: I travel thirty kilometres to my office every day, my budget is around ninety thousand, which bike should I take?
+    hi: मैं रोज़ office तीस kilometre जाता हूँ, budget लगभग नब्बे हज़ार है, कौन सी bike लूँ?
+    ta: நான் தினமும் office-க்கு முப்பது kilometre போறேன், budget தொண்ணூறு ஆயிரம் கிட்ட, எந்த bike வாங்கலாம்?
+    te: నేను రోజూ office కి ముప్పై kilometre వెళ్తాను, budget సుమారు తొంభై వేలు, ఏ bike తీసుకోవాలి?
+    ml: ഞാൻ ദിവസവും office-ലേക്ക് മുപ്പത് kilometre പോകും, budget ഏകദേശം തൊണ്ണൂറായിരം, ഏത് bike എടുക്കണം?
+    kn: ನಾನು ದಿನಾ office ಗೆ ಮೂವತ್ತು kilometre ಹೋಗ್ತೀನಿ, budget ಸುಮಾರು ತೊಂಬತ್ತು ಸಾವಿರ, ಯಾವ bike ತಗೋಬೇಕು?
+
+- id: price-activa
+  labels: {intent: price, rider: unknown, use_case: unknown, timeline: unknown}
+  text:
+    en: What is the price of the Activa 125?
+    hi: Activa 125 की price क्या है?
+    ta: Activa 125 விலை என்ன?
+    te: Activa 125 ధర ఎంత?
+    ml: Activa 125-ന്റെ വില എത്രയാണ്?
+    kn: Activa 125 ಬೆಲೆ ಎಷ್ಟು?
+
+- id: delivery-ev
+  labels: {intent: recommendation, use_case: delivery, priorities: [electric, mileage]}  # petrol cost = running cost
+  text:
+    en: I do food delivery, petrol cost is too high, is there an electric scooter?
+    hi: मैं food delivery करता हूँ, petrol का खर्चा बहुत ज़्यादा है, कोई electric scooter है क्या?
+    ta: நான் food delivery பண்றேன், petrol செலவு ரொம்ப அதிகம், electric scooter ஏதாவது இருக்கா?
+    te: నేను food delivery చేస్తాను, petrol ఖర్చు చాలా ఎక్కువ, electric scooter ఏదైనా ఉందా?
+    ml: ഞാൻ food delivery ചെയ്യുന്നു, petrol ചെലവ് വളരെ കൂടുതലാണ്, electric scooter വല്ലതും ഉണ്ടോ?
+    kn: ನಾನು food delivery ಮಾಡ್ತೀನಿ, petrol ಖರ್ಚು ತುಂಬಾ ಜಾಸ್ತಿ, electric scooter ಏನಾದ್ರೂ ಇದೆಯಾ?
+
+- id: this-week-emi
+  labels: {intent: finance, timeline: this_week, payment_interest: [emi], purchase_intent: 5}
+  text:
+    en: I want to buy the Shine this week itself, are there EMI options?
+    hi: मुझे इसी हफ्ते Shine खरीदनी है, EMI option है क्या?
+    ta: இந்த வாரமே Shine வாங்கணும், EMI option இருக்கா?
+    te: ఈ వారమే Shine కొనాలి, EMI option ఉందా?
+    ml: ഈ ആഴ്ച തന്നെ Shine വാങ്ങണം, EMI option ഉണ്ടോ?
+    kn: ಈ ವಾರನೇ Shine ತಗೋಬೇಕು, EMI option ಇದೆಯಾ?
+
+- id: highway-power
+  labels: {intent: recommendation, use_case: long_rides, priorities: [power], rider: self}
+  text:
+    en: I go on long highway rides on weekends, I want a powerful bike.
+    hi: मैं weekends पर highway पे लंबी rides पे जाता हूँ, एक powerful bike चाहिए।
+    ta: நான் weekend-ல highway-ல நீண்ட ride போவேன், ஒரு powerful bike வேணும்.
+    te: నేను weekends లో highway మీద long rides కి వెళ్తాను, ఒక powerful bike కావాలి.
+    ml: ഞാൻ weekend-ൽ highway-യിൽ നീണ്ട ride പോകും, ഒരു powerful bike വേണം.
+    kn: ನಾನು weekend ನಲ್ಲಿ highway ನಲ್ಲಿ ಲಾಂಗ್ ride ಹೋಗ್ತೀನಿ, ಒಂದು powerful bike ಬೇಕು.
+
+- id: son-college
+  labels: {intent: recommendation, rider: child, use_case: college, priorities: [safety], experience: first_two_wheeler}
+  text:
+    en: My son is starting college, it's his first bike, safety matters most.
+    hi: मेरा बेटा college जाने लगा है, उसकी पहली bike है, safety सबसे ज़रूरी है।
+    ta: என் பையன் college போக ஆரம்பிச்சிருக்கான், அவனுக்கு இது முதல் bike, safety தான் முக்கியம்.
+    te: మా అబ్బాయి college కి వెళ్ళడం మొదలుపెట్టాడు, వాడికి ఇది మొదటి bike, safety చాలా ముఖ్యం.
+    ml: എന്റെ മകൻ college-ൽ പോകാൻ തുടങ്ങി, അവന്റെ ആദ്യത്തെ bike ആണ്, safety ആണ് ഏറ്റവും പ്രധാനം.
+    kn: ನನ್ನ ಮಗ college ಗೆ ಹೋಗೋಕೆ ಶುರು ಮಾಡಿದ್ದಾನೆ, ಅವನಿಗೆ ಇದು ಮೊದಲ bike, safety ತುಂಬಾ ಮುಖ್ಯ.
+
+- id: browsing
+  labels: {timeline: later_or_browsing, payment_interest: [], purchase_intent: 1}
+  text:
+    en: Just looking for now, I might buy next year.
+    hi: अभी बस देख रहा हूँ, शायद अगले साल लूँगा।
+    ta: இப்போ சும்மா பார்க்கறேன், அடுத்த வருஷம் வாங்கலாம்னு இருக்கேன்.
+    te: ఇప్పుడు ఊరికే చూస్తున్నాను, వచ్చే సంవత్సరం కొనచ్చు.
+    ml: ഇപ്പോൾ വെറുതെ നോക്കുകയാണ്, അടുത്ത വർഷം വാങ്ങിയേക്കാം.
+    kn: ಈಗ ಸುಮ್ಮನೆ ನೋಡ್ತಿದ್ದೀನಿ, ಮುಂದಿನ ವರ್ಷ ತಗೋಬಹುದು.
+
+- id: exchange-old
+  labels: {intent: finance, experience: replacing, payment_interest: [exchange]}
+  text:
+    en: I have a ten-year-old bike, I want to exchange it for a new Honda. Is exchange possible?
+    hi: मेरे पास दस साल पुरानी bike है, उसे exchange करके नई Honda लेनी है। Exchange हो जाएगा?
+    ta: என்கிட்ட பத்து வருஷம் பழைய bike இருக்கு, அதை exchange பண்ணி புது Honda வாங்கணும். Exchange பண்ண முடியுமா?
+    te: నా దగ్గర పదేళ్ళ పాత bike ఉంది, దాన్ని exchange చేసి కొత్త Honda తీసుకోవాలి. Exchange అవుతుందా?
+    ml: എന്റെ കയ്യിൽ പത്ത് വർഷം പഴയ bike ഉണ്ട്, അത് exchange ചെയ്ത് പുതിയ Honda എടുക്കണം. Exchange പറ്റുമോ?
+    kn: ನನ್ನ ಹತ್ತಿರ ಹತ್ತು ವರ್ಷ ಹಳೆಯ bike ಇದೆ, ಅದನ್ನ exchange ಮಾಡಿ ಹೊಸ Honda ತಗೋಬೇಕು. Exchange ಆಗುತ್ತಾ?
+
+- id: angry
+  labels: {frustration: 5}
+  text:
+    en: I've asked three times already and nobody gives a straight answer, this is useless!
+    hi: मैंने तीन बार पूछ लिया, कोई सीधा जवाब नहीं देता, ये बिल्कुल बेकार है!
+    ta: மூணு தடவை கேட்டுட்டேன், யாரும் நேரா பதில் சொல்ல மாட்டேங்கறீங்க, இது சுத்த waste!
+    te: మూడు సార్లు అడిగాను, ఎవరూ సరిగ్గా సమాధానం చెప్పట్లేదు, ఇది పూర్తిగా waste!
+    ml: മൂന്ന് തവണ ചോദിച്ചു, ആരും നേരെ ഉത്തരം തരുന്നില്ല, ഇത് തീരെ waste ആണ്!
+    kn: ಮೂರು ಸಲ ಕೇಳಿದ್ದೀನಿ, ಯಾರೂ ನೇರವಾಗಿ ಉತ್ತರ ಕೊಡ್ತಿಲ್ಲ, ಇದು ಸಂಪೂರ್ಣ waste!
+
+- id: wants-person
+  labels: {intent: wants_human, wants_human: true}
+  text:
+    en: Can someone from the showroom call me? I'd rather talk to a person.
+    hi: क्या showroom से कोई मुझे call कर सकता है? मैं किसी इंसान से बात करना चाहता हूँ।
+    ta: Showroom-ல இருந்து யாராவது எனக்கு call பண்ண முடியுமா? நான் ஒரு ஆள்கிட்ட பேசணும்.
+    te: Showroom నుండి ఎవరైనా నాకు call చేయగలరా? నేను ఒక మనిషితో మాట్లాడాలి.
+    ml: Showroom-ൽ നിന്ന് ആരെങ്കിലും എന്നെ call ചെയ്യുമോ? എനിക്ക് ഒരാളോട് നേരിട്ട് സംസാരിക്കണം.
+    kn: Showroom ಇಂದ ಯಾರಾದ್ರೂ ನನಗೆ call ಮಾಡ್ತೀರಾ? ನಾನು ಒಬ್ಬ ವ್ಯಕ್ತಿ ಜೊತೆ ಮಾತಾಡಬೇಕು.
+
+- id: price-objection
+  labels: {objection: price_high}
+  text:
+    en: One lakh ten thousand for the Activa 125 is too costly for me.
+    hi: Activa 125 के लिए एक लाख दस हज़ार मेरे लिए बहुत महँगा है।
+    ta: Activa 125-க்கு ஒரு லட்சத்து பத்தாயிரம் எனக்கு ரொம்ப costly.
+    te: Activa 125 కి ఒక లక్ష పది వేలు నాకు చాలా costly.
+    ml: Activa 125-ന് ഒരു ലക്ഷത്തി പതിനായിരം എനിക്ക് വളരെ costly ആണ്.
+    kn: Activa 125 ಗೆ ಒಂದು ಲಕ್ಷ ಹತ್ತು ಸಾವಿರ ನನಗೆ ತುಂಬಾ costly.
+
+- id: competitor
+  labels: {intent: competitor, objection: comparing_brand}
+  text:
+    en: I'm also looking at the TVS Jupiter, which one is better?
+    hi: मैं TVS Jupiter भी देख रहा हूँ, कौन सा better है?
+    ta: நான் TVS Jupiter-உம் பார்க்கறேன், எது better?
+    te: నేను TVS Jupiter కూడా చూస్తున్నాను, ఏది better?
+    ml: ഞാൻ TVS Jupiter-ഉം നോക്കുന്നുണ്ട്, ഏതാണ് better?
+    kn: ನಾನು TVS Jupiter ಕೂಡ ನೋಡ್ತಿದ್ದೀನಿ, ಯಾವುದು better?
+
+- id: wife-comfort
+  labels: {intent: recommendation, rider: spouse, priorities: [comfort], use_case: family_errands}
+  text:
+    en: I need a comfortable scooter for my wife, she drops our kid at school every day.
+    hi: मेरी wife के लिए comfortable scooter चाहिए, वो रोज़ बच्चे को school छोड़ने जाती है।
+    ta: என் wife-க்கு ஒரு comfortable scooter வேணும், அவங்க தினமும் பையனை school-ல விடப் போவாங்க.
+    te: నా wife కోసం comfortable scooter కావాలి, ఆమె రోజూ పిల్లాడిని school లో దింపుతుంది.
+    ml: എന്റെ wife-ന് ഒരു comfortable scooter വേണം, അവൾ ദിവസവും കുട്ടിയെ school-ൽ കൊണ്ടുവിടും.
+    kn: ನನ್ನ wife ಗೆ ಒಂದು comfortable scooter ಬೇಕು, ಅವರು ದಿನಾ ಮಗುವನ್ನ school ಗೆ ಬಿಡೋಕೆ ಹೋಗ್ತಾರೆ.
+
+- id: book
+  labels: {intent: booking}
+  text:
+    en: Please book a test ride for the SP 125 on Saturday morning.
+    hi: Saturday सुबह SP 125 की test ride book कर दीजिए।
+    ta: Saturday காலையில SP 125 test ride book பண்ணுங்க.
+    te: Saturday ఉదయం SP 125 test ride book చేయండి.
+    ml: Saturday രാവിലെ SP 125 test ride book ചെയ്യൂ.
+    kn: Saturday ಬೆಳಿಗ್ಗೆ SP 125 test ride book ಮಾಡಿ.
+
+- id: cancel
+  labels: {intent: cancel}
+  text:
+    en: I want to cancel my test ride booking.
+    hi: मुझे अपनी test ride booking cancel करनी है।
+    ta: என் test ride booking-ஐ cancel பண்ணணும்.
+    te: నా test ride booking cancel చేయాలి.
+    ml: എന്റെ test ride booking cancel ചെയ്യണം.
+    kn: ನನ್ನ test ride booking cancel ಮಾಡಬೇಕು.
+
+- id: service
+  labels: {intent: out_of_scope}
+  text:
+    en: When is the first free service for my Activa due?
+    hi: मेरी Activa की पहली free service कब है?
+    ta: என் Activa-வுக்கு முதல் free service எப்போ?
+    te: నా Activa కి మొదటి free service ఎప్పుడు?
+    ml: എന്റെ Activa-യുടെ ആദ്യത്തെ free service എപ്പോഴാണ്?
+    kn: ನನ್ನ Activa ದ ಮೊದಲ free service ಯಾವಾಗ?
+
+- id: style-budget
+  labels: {intent: recommendation, budget_inr: 180000, priorities: [style]}
+  text:
+    en: My budget is about one lakh eighty thousand, I want something stylish with a retro look.
+    hi: मेरा budget लगभग एक लाख अस्सी हज़ार है, कुछ stylish retro look वाली चाहिए।
+    ta: என் budget ஒரு லட்சத்து எண்பதாயிரம் கிட்ட, stylish-ஆ retro look-ல ஏதாவது வேணும்.
+    te: నా budget సుమారు ఒక లక్ష ఎనభై వేలు, stylish గా retro look ఉన్నది కావాలి.
+    ml: എന്റെ budget ഏകദേശം ഒരു ലക്ഷത്തി എൺപതിനായിരം, stylish ആയ retro look ഉള്ള ഒന്ന് വേണം.
+    kn: ನನ್ನ budget ಸುಮಾರು ಒಂದು ಲಕ್ಷ ಎಂಭತ್ತು ಸಾವಿರ, stylish ಆಗಿ retro look ಇರೋದು ಬೇಕು.
+
+- id: mileage-doubt
+  labels: {intent: specific_model, objection: mileage_doubt}
+  text:
+    en: People say the Hornet 2.0 gives only forty kilometres per litre, is that true?
+    hi: लोग कहते हैं Hornet 2.0 सिर्फ चालीस का mileage देती है, सच में?
+    ta: Hornet 2.0 வெறும் நாற்பது mileage தான் தரும்னு சொல்றாங்க, உண்மையா?
+    te: Hornet 2.0 కేవలం నలభై mileage ఇస్తుందని అంటున్నారు, నిజమేనా?
+    ml: Hornet 2.0 വെറും നാല്പത് mileage മാത്രമേ തരൂ എന്ന് പറയുന്നു, ശരിയാണോ?
+    kn: Hornet 2.0 ಬರೀ ನಲವತ್ತು mileage ಕೊಡುತ್ತೆ ಅಂತ ಹೇಳ್ತಾರೆ, ನಿಜಾನಾ?
+
+- id: upgrade-month
+  labels: {intent: recommendation, experience: upgrading, timeline: this_month, rider: self}
+  text:
+    en: I ride a Shine 100 now, I want to upgrade to something bigger this month.
+    hi: अभी मैं Shine 100 चलाता हूँ, इसी महीने कुछ बड़ी bike में upgrade करना है।
+    ta: இப்போ நான் Shine 100 ஓட்டறேன், இந்த மாசமே பெரிய bike-க்கு upgrade பண்ணணும்.
+    te: ఇప్పుడు నేను Shine 100 నడుపుతున్నాను, ఈ నెలలోనే పెద్ద bike కి upgrade అవ్వాలి.
+    ml: ഇപ്പോൾ ഞാൻ Shine 100 ഓടിക്കുന്നു, ഈ മാസം തന്നെ വലിയ bike-ലേക്ക് upgrade ചെയ്യണം.
+    kn: ಈಗ ನಾನು Shine 100 ಓಡಿಸ್ತೀನಿ, ಈ ತಿಂಗಳೇ ದೊಡ್ಡ bike ಗೆ upgrade ಆಗಬೇಕು.
+
+# --- multi-turn: the answer depends on earlier turns ---------------------------------------------------------
+
+- id: mt-daughter-college
+  labels: {rider: child, use_case: college}
+  context:
+    - caller:
+        en: "I need a scooter for my daughter."
+        hi: "मेरी बेटी के लिए scooter चाहिए।"
+        ta: "என் பொண்ணுக்கு ஒரு scooter வேணும்."
+        te: "మా అమ్మాయి కోసం scooter కావాలి."
+        ml: "എന്റെ മകൾക്ക് ഒരു scooter വേണം."
+        kn: "ನನ್ನ ಮಗಳಿಗೆ ಒಂದು scooter ಬೇಕು."
+    - agent:
+        en: "Sure. What will she mostly use it for?"
+        hi: "Zaroor. Woh zyadatar kis kaam ke liye chalayengi?"
+        ta: "சரி. அவங்க பெரும்பாலும் எதுக்கு use பண்ணுவாங்க?"
+        te: "సరే. ఆమె ఎక్కువగా దేనికి వాడతారు?"
+        ml: "ശരി. അവൾ കൂടുതലും എന്തിനാണ് ഉപയോഗിക്കുക?"
+        kn: "ಸರಿ. ಅವರು ಹೆಚ್ಚಾಗಿ ಯಾವುದಕ್ಕೆ ಬಳಸ್ತಾರೆ?"
+  text:
+    en: College, about ten kilometres a day.
+    hi: College के लिए, रोज़ लगभग दस kilometre।
+    ta: College-க்கு, தினமும் பத்து kilometre கிட்ட.
+    te: College కి, రోజూ సుమారు పది kilometre.
+    ml: College-ലേക്ക്, ദിവസവും ഏകദേശം പത്ത് kilometre.
+    kn: College ಗೆ, ದಿನಾ ಸುಮಾರು ಹತ್ತು kilometre.
+
+- id: mt-unicorn-emi
+  labels: {timeline: this_month, payment_interest: [emi]}
+  context:
+    - caller:
+        en: "What's the price of the Unicorn?"
+        hi: "Unicorn की price क्या है?"
+        ta: "Unicorn விலை என்ன?"
+        te: "Unicorn ధర ఎంత?"
+        ml: "Unicorn-ന്റെ വില എത്ര?"
+        kn: "Unicorn ಬೆಲೆ ಎಷ್ಟು?"
+    - agent:
+        en: "About one lakh fifteen thousand ex-showroom. When are you planning to buy?"
+        hi: "Lagbhag 1 lakh 15 hazaar ex-showroom. Aap kab lena chahte hain?"
+        ta: "சுமார் 1,15,800 ரூபாய் ex-showroom. எப்போ வாங்க plan பண்றீங்க?"
+        te: "సుమారు 1,15,800 రూపాయలు ex-showroom. ఎప్పుడు కొనాలని అనుకుంటున్నారు?"
+        ml: "ഏകദേശം 1,15,800 രൂപ ex-showroom. എപ്പോഴാണ് വാങ്ങാൻ ഉദ്ദേശിക്കുന്നത്?"
+        kn: "ಸುಮಾರು 1,15,800 ರೂಪಾಯಿ ex-showroom. ಯಾವಾಗ ತಗೋಬೇಕು ಅಂತಿದ್ದೀರಾ?"
+  text:
+    en: Within this month, if EMI is available.
+    hi: इसी महीने, अगर EMI मिल जाए तो।
+    ta: இந்த மாசத்துக்குள்ள, EMI கிடைச்சா.
+    te: ఈ నెలలోనే, EMI దొరికితే.
+    ml: ഈ മാസത്തിനുള്ളിൽ, EMI കിട്ടുമെങ്കിൽ.
+    kn: ಈ ತಿಂಗಳೊಳಗೆ, EMI ಸಿಕ್ಕಿದರೆ.
+
+- id: mt-commute-mileage
+  labels: {use_case: commute, priorities: [mileage], budget_inr: 90000}
+  context:
+    - caller:
+        en: "I'm looking for a bike under ninety thousand."
+        hi: "नब्बे हज़ार के अंदर कोई bike चाहिए।"
+        ta: "தொண்ணூறு ஆயிரத்துக்குள்ள ஒரு bike வேணும்."
+        te: "తొంభై వేల లోపు ఒక bike కావాలి."
+        ml: "തൊണ്ണൂറായിരത്തിന് താഴെ ഒരു bike വേണം."
+        kn: "ತೊಂಬತ್ತು ಸಾವಿರದ ಒಳಗೆ ಒಂದು bike ಬೇಕು."
+    - agent:
+        en: "Is it mainly for office travel?"
+        hi: "Kya yeh zyadatar office jaane ke liye hai?"
+        ta: "இது முக்கியமா office போறதுக்கா?"
+        te: "ఇది ముఖ్యంగా office కి వెళ్ళడానికా?"
+        ml: "ഇത് പ്രധാനമായും office-ൽ പോകാനാണോ?"
+        kn: "ಇದು ಮುಖ್ಯವಾಗಿ office ಗೆ ಹೋಗೋಕಾ?"
+  text:
+    en: Yes, and good mileage matters most.
+    hi: हाँ, और mileage अच्छा होना सबसे ज़रूरी है।
+    ta: ஆமா, mileage நல்லா இருக்கறது தான் முக்கியம்.
+    te: అవును, mileage బాగుండటం ముఖ్యం.
+    ml: അതെ, mileage നല്ലതാവണം, അതാണ് പ്രധാനം.
+    kn: ಹೌದು, mileage ಚೆನ್ನಾಗಿರೋದೇ ಮುಖ್ಯ.
+
+- id: mt-cb350-later
+  labels: {timeline: later_or_browsing, purchase_intent: 1}
+  context:
+    - caller:
+        en: "Tell me about the CB350."
+        hi: "CB350 के बारे में बताइए।"
+        ta: "CB350 பத்தி சொல்லுங்க."
+        te: "CB350 గురించి చెప్పండి."
+        ml: "CB350-നെ കുറിച്ച് പറയൂ."
+        kn: "CB350 ಬಗ್ಗೆ ಹೇಳಿ."
+    - agent:
+        en: "It's a 350 cc retro bike. Would you like to book a test ride?"
+        hi: "Yeh 350 cc ki retro bike hai. Kya aap test ride book karna chahenge?"
+        ta: "இது 350 cc retro bike. Test ride book பண்ணலாமா?"
+        te: "ఇది 350 cc retro bike. Test ride book చేయమంటారా?"
+        ml: "ഇത് 350 cc retro bike ആണ്. Test ride book ചെയ്യട്ടെ?"
+        kn: "ಇದು 350 cc retro bike. Test ride book ಮಾಡಲಾ?"
+  text:
+    en: No, just checking for now, maybe next year.
+    hi: नहीं, अभी बस देख रहा हूँ, शायद अगले साल।
+    ta: வேண்டாம், இப்போ சும்மா பார்க்கறேன், அடுத்த வருஷம் பார்க்கலாம்.
+    te: వద్దు, ఇప్పుడు ఊరికే చూస్తున్నాను, బహుశా వచ్చే సంవత్సరం.
+    ml: വേണ്ട, ഇപ്പോൾ വെറുതെ നോക്കുകയാണ്, ഒരുപക്ഷേ അടുത്ത വർഷം.
+    kn: ಬೇಡ, ಈಗ ಸುಮ್ಮನೆ ನೋಡ್ತಿದ್ದೀನಿ, ಬಹುಶಃ ಮುಂದಿನ ವರ್ಷ.
+
+- id: mt-wife-learner
+  labels: {rider: spouse, experience: first_two_wheeler}
+  context:
+    - caller:
+        en: "Book a test ride for the Activa."
+        hi: "Activa की test ride book करनी है।"
+        ta: "Activa test ride book பண்ணணும்."
+        te: "Activa test ride book చేయాలి."
+        ml: "Activa test ride book ചെയ്യണം."
+        kn: "Activa test ride book ಮಾಡಬೇಕು."
+    - agent:
+        en: "Do you have a valid driving licence?"
+        hi: "Kya aapke paas valid driving licence hai?"
+        ta: "உங்ககிட்ட valid driving licence இருக்கா?"
+        te: "మీ దగ్గర valid driving licence ఉందా?"
+        ml: "നിങ്ങളുടെ കയ്യിൽ valid driving licence ഉണ്ടോ?"
+        kn: "ನಿಮ್ಮ ಹತ್ತಿರ valid driving licence ಇದೆಯಾ?"
+  text:
+    en: Not yet, actually it's for my wife, she is just learning to ride.
+    hi: अभी नहीं, असल में ये मेरी wife के लिए है, वो अभी चलाना सीख रही है।
+    ta: இன்னும் இல்ல, உண்மையில இது என் wife-க்கு, அவங்க இப்போ தான் ஓட்ட கத்துக்கறாங்க.
+    te: ఇంకా లేదు, నిజానికి ఇది నా wife కోసం, ఆమె ఇప్పుడే నడపడం నేర్చుకుంటోంది.
+    ml: ഇതുവരെ ഇല്ല, സത്യത്തിൽ ഇത് എന്റെ wife-ന് വേണ്ടിയാണ്, അവൾ ഓടിക്കാൻ പഠിക്കുന്നതേയുള്ളൂ.
+    kn: ಇನ್ನೂ ಇಲ್ಲ, ನಿಜ ಹೇಳಬೇಕಂದ್ರೆ ಇದು ನನ್ನ wife ಗೆ, ಅವರು ಈಗಷ್ಟೇ ಓಡಿಸೋದು ಕಲೀತಾ ಇದ್ದಾರೆ.

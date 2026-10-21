@@ -55,3 +55,22 @@ describe('rate limiter', () => {
     expect(clientIp(new Request('http://x'))).toBe('local');
   });
 });
+
+describe('leads CSV', () => {
+  it('quotes and neutralises formulas', async () => {
+    const { csvCell, toCsv, CSV_HEADER } = await import('@/lib/server/leads');
+    expect(csvCell('=HYPERLINK("http://evil")')).toBe(`"'=HYPERLINK(""http://evil"")"`);
+    expect(csvCell('+91 call')).toBe("'+91 call");
+    expect(csvCell('-5')).toBe("'-5");
+    expect(csvCell('a, b')).toBe('"a, b"');
+    expect(csvCell(null)).toBe('');
+    expect(csvCell(new Date('2026-10-20T10:00:00Z'))).toBe('2026-10-20T10:00:00.000Z');
+    const csv = toCsv([
+      { score: 'hot', phone_masked: '90xxx xx345', summary: 'Wants EMI, this week' },
+    ]);
+    const [head, row] = csv.trim().split('\r\n');
+    expect(head).toBe(CSV_HEADER.join(','));
+    expect(row).toContain('hot');
+    expect(row).toContain('"Wants EMI, this week"');
+  });
+});

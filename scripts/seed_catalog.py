@@ -1,4 +1,5 @@
-"""Load data/catalog/*.json (+ _price_overrides, _stt_aliases, _on_road_delhi) into the database (SPEC §6).
+"""Load data/catalog/*.json (+ _enrichment, _price_overrides, _stt_aliases, _on_road_delhi, _finance_schemes)
+into the database (SPEC §6, §20.7).
 
 Run: `uv run python scripts/seed_catalog.py` (`--dry-run` validates and prints the report without writing).
 """

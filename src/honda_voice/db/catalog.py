@@ -14,6 +14,7 @@ import asyncpg
 
 from honda_voice.db.catalog_seed import SeedRows
 from honda_voice.domain.alias_match import AliasIndex, normalize
+from honda_voice.domain.finance import Scheme
 
 TRIGRAM_MIN = 0.4  # SPEC §7
 TRIGRAM_MARGIN = 0.1  # top match must beat the runner-up by this much, else ask "which one?"
@@ -58,9 +59,32 @@ def _model(
     }  # fmt: skip
 
 
+def _scheme(row: dict[str, Any]) -> Scheme:
+    return Scheme(
+        id=row["id"], name=row["name"], interest_rate_pct=float(row["interest_rate_pct"]),
+        tenure_months=tuple(row["tenure_months"]), min_down_payment_pct=float(row["min_down_payment_pct"]),
+        processing_fee_inr=row["processing_fee_inr"],
+    )  # fmt: skip
+
+
+def _fit(row: dict[str, Any]) -> dict[str, Any]:
+    kerb = row["kerb_weight_kg"]
+    return {**row, "kerb_weight_kg": float(kerb) if kerb is not None else None}
+
+
 class Catalog:
-    def __init__(self, models: dict[str, dict[str, Any]], aliases: dict[str, str], pool: asyncpg.Pool | None):
+    def __init__(
+        self,
+        models: dict[str, dict[str, Any]],
+        aliases: dict[str, str],
+        pool: asyncpg.Pool | None,
+        *,
+        fit: dict[str, dict[str, Any]] | None = None,
+        schemes: list[Scheme] | None = None,
+    ):
         self.models = models
+        self.fit = fit or {}  # bike_id -> bike_fit row (SPEC §20.4)
+        self.schemes = schemes or []  # demo EMI plans
         self.index = AliasIndex(aliases)
         self.pool = pool  # None: offline (tests), no trigram fallback
         self._ready = asyncio.Event()
@@ -76,6 +100,7 @@ class Catalog:
         async def _load() -> None:
             loaded = await cls.load(pool)
             cat.models, cat.index = loaded.models, loaded.index
+            cat.fit, cat.schemes = loaded.fit, loaded.schemes
             cat._ready.set()
 
         cat._load_task = asyncio.create_task(_load())
@@ -90,15 +115,23 @@ class Catalog:
                 "select * from public.bike_on_road_prices order by bike_id, on_road_inr"
             )
             aliases = await conn.fetch("select alias, bike_id from public.bike_aliases")
-        return cls._build([dict(b) for b in bikes], [dict(v) for v in variants], [dict(o) for o in on_road],
-                          {a["alias"]: a["bike_id"] for a in aliases}, pool)  # fmt: skip
+            fit = await conn.fetch("select * from public.bike_fit")
+            schemes = await conn.fetch("select * from public.finance_schemes order by interest_rate_pct")
+        cat = cls._build([dict(b) for b in bikes], [dict(v) for v in variants], [dict(o) for o in on_road],
+                         {a["alias"]: a["bike_id"] for a in aliases}, pool)  # fmt: skip
+        cat.fit = {f["bike_id"]: _fit(dict(f)) for f in fit}
+        cat.schemes = [_scheme(dict(x)) for x in schemes]
+        return cat
 
     @classmethod
     def from_seed_rows(cls, rows: SeedRows) -> "Catalog":
         """Offline catalog from the validated JSON (tests and evals without a database)."""
         on_road = [dict(o, other_charges=json.loads(o["other_charges"])) for o in rows.on_road]
-        return cls._build(rows.bikes, rows.variants, sorted(on_road, key=lambda o: o["on_road_inr"]),
-                          dict(rows.aliases), None)  # fmt: skip
+        cat = cls._build(rows.bikes, rows.variants, sorted(on_road, key=lambda o: o["on_road_inr"]),
+                         dict(rows.aliases), None)  # fmt: skip
+        cat.fit = {f["bike_id"]: _fit(f) for f in rows.fit}
+        cat.schemes = sorted((_scheme(f) for f in rows.finance), key=lambda x: x.interest_rate_pct)
+        return cat
 
     @classmethod
     def _build(cls, bikes, variants, on_road, aliases, pool) -> "Catalog":
@@ -116,6 +149,10 @@ class Catalog:
                 sorted(a for a, bid in aliases.items() if bid == b["id"]),
             )
         return cls(models, aliases, pool)
+
+    async def wait_ready(self) -> None:
+        """Until the background load (call start) finishes; immediate afterwards."""
+        await self._ready.wait()
 
     def mentioned(self, text: str) -> list[str]:
         return self.index.mentions(text)

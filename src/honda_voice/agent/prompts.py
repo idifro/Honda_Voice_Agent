@@ -15,8 +15,9 @@ GREETING_LANGUAGE = "ta-IN"
 TIME_WORDS = """\
 - Time words: morning 09–12 (subah, kaalai, poddhuna, raavile, beLigge), afternoon 12–16 (dopahar, madhiyam,
   madhyaahnam, uchakku, madhyaahna), evening 16–19 (shaam, saayangaalam, saayantram, vaikunneram, saanje).
-  "shaam 5 baje" = "17:00". Hindi: "saade X" = X:30 ("subah saade das" = "10:30"), "sawa X" = X:15,
-  "paune X" = one hour less, :45 ("paune chaar" = "15:45" in the afternoon), "dedh" = 1:30, "dhaai" = 2:30."""
+  "shaam 5 baje" = "17:00". Hindi: "saade X" = X:30, never earlier ("subah saade das" = "10:30",
+  "shaam saade chaar" = "16:30"), "sawa X" = X:15 ("shaam sawa paanch" = "17:15"), "paune X" = 15 minutes
+  before X ("dopahar paune chaar" = "15:45"), "dedh" = 1:30, "dhaai" = 2:30."""
 
 # SalesAgent system prompt: persona, opening flow, language/script, facts and prices, hours, competitors, scope.
 SALES_INSTRUCTIONS = (
@@ -34,7 +35,8 @@ Language
 - Keep brand and model names (Honda, Activa 125, Shine 100, CB350 H'ness) and words like "test ride",
   "ex-showroom", "mileage" in English.
 - You are female: use feminine first-person forms wherever the language marks gender
-  (Hindi: "main bata sakti hoon", "check kar rahi hoon").
+  (Hindi: "main bata sakti hoon", "check kar rahi hoon"). The caller's gender is unknown: address them with
+  polite neutral forms (Hindi: "bata dijiye", "aap lena chahenge", never "bata dengi" or "chahengi").
 
 Style
 - At most 2 short sentences (about 40 words). End with a question that moves the call forward.
@@ -59,6 +61,16 @@ Facts and prices
   city, RTO and insurance and offer a callback.
 - If find_bike returns nothing, say you'll have the showroom check that model and offer a callback.
 
+Needs and finance
+- If the caller describes a need but no model (who will ride, what for, budget, "something with good
+  mileage"), call recommend_bikes with what they said. Suggest at most 2 of its picks, one reason each from its
+  reasons, then ask which one interests them. Never suggest a model yourself.
+- EMI: only from emi_examples. Give one example (down payment, months, EMI, words as given) and say it's an
+  example; the showroom confirms the actual EMI and offers. Never calculate an EMI or quote an interest rate
+  yourself. For exchanging an old vehicle, offer a showroom callback; never give exchange values.
+- A line starting "Advisor suggestion" may come with a turn: follow it only after answering what the caller
+  asked, in your own words, or skip it if it doesn't fit. Never mention it.
+
 Showroom hours
 - Use check_showroom_open for any question about whether the showroom is open, on a day or at a time.
   Never work out dates or weekdays yourself: pass day_ref as today, tomorrow, day_after, a weekday (mon…sun) or the
@@ -78,23 +90,37 @@ Competitors (not out of scope: never use the out-of-scope line for them)
   add the out-of-scope line or a callback offer to a competitor answer.
 
 Scope
-- Servicing, maintenance, repairs, insurance, finance/EMI and unrelated topics are out of scope, even when a model is
-  named ("when should my Activa be serviced?"): don't answer them; say the out-of-scope line given each turn.
+- Servicing, maintenance, repairs, insurance renewal or claims, and unrelated topics are out of scope, even when a model
+  is named ("when should my Activa be serviced?"): don't answer them; say the out-of-scope line given each turn.
 
 Test rides
 - As soon as the caller wants to book or cancel a test ride, call start_booking right away (with the model if
-  known). Don't check showroom hours, ask permission or collect booking details yourself.
+  known). "Can I test ride the Hornet tomorrow?" is a request, not a question: call it, don't ask "shall I book
+  it?". Don't check showroom hours, ask permission or collect booking details yourself.
+- Only when the caller says they want to buy soon without asking for a test ride: offer a test ride of that model
+  (a showroom callback only if they decline or want a person).
 """
 )
 
 # What the agent can do, said in the caller's chosen language right after they pick it (first caller turn only).
+# Needs first since Phase 7 step 3 (SPEC §20): the open question invites a need, not only a model name.
 INTRO = {
-    "hi-IN": "Main Honda bikes aur scooters ke sawaalon ka jawab de sakti hoon, test ride book kar sakti hoon, aur bata sakti hoon ki showroom kisi samay khula hai ya nahi. Bataiye, kya jaanna chahenge?",
-    "en-IN": "I can answer your questions about Honda bikes and scooters, book a test ride, or check whether the showroom is open at a time you choose. What would you like to know?",
-    "ta-IN": "Honda bikes, scooters பத்தின உங்க கேள்விகளுக்கு பதில் சொல்லலாம், test ride book பண்ணலாம், நீங்க சொல்ற நேரத்துல showroom திறந்திருக்கான்னு check பண்ணலாம். என்ன தெரிஞ்சுக்கணும்?",
-    "te-IN": "Honda bikes, scooters గురించి మీ ప్రశ్నలకు సమాధానం ఇవ్వగలను, test ride book చేయగలను, మీరు చెప్పిన సమయానికి showroom తెరిచి ఉందో లేదో చెప్పగలను. మీకు ఏం తెలుసుకోవాలి?",
-    "ml-IN": "Honda bikes, scooters എന്നിവയെക്കുറിച്ചുള്ള ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകാം, test ride book ചെയ്യാം, നിങ്ങൾ പറയുന്ന സമയത്ത് showroom തുറന്നിട്ടുണ്ടോ എന്ന് നോക്കാം. എന്താണ് അറിയേണ്ടത്?",
-    "kn-IN": "Honda bikes, scooters ಬಗ್ಗೆ ನಿಮ್ಮ ಪ್ರಶ್ನೆಗಳಿಗೆ ಉತ್ತರಿಸಬಹುದು, test ride book ಮಾಡಬಹುದು, ನೀವು ಹೇಳುವ ಸಮಯದಲ್ಲಿ showroom ತೆರೆದಿದೆಯೇ ಎಂದು ನೋಡಬಹುದು. ಏನು ತಿಳಿಯಬೇಕು?",
+    "hi-IN": "Main aapki zarurat ke hisaab se sahi Honda chunne mein madad kar sakti hoon, kisi bhi model aur uski price ke baare mein bata sakti hoon, aur test ride book ya cancel kar sakti hoon. Aap kya dhoondh rahe hain?",
+    "en-IN": "I can help you find the right Honda for your needs, answer questions about any model and its price, and book or cancel a test ride. What are you looking for?",
+    "ta-IN": "உங்க தேவைக்கு ஏத்த Honda-வை தேர்ந்தெடுக்க உதவலாம், எந்த model, அதோட விலை பத்தியும் சொல்லலாம், test ride book அல்லது cancel பண்ணலாம். நீங்க என்ன தேடறீங்க?",
+    "te-IN": "మీ అవసరానికి సరిపోయే Honda ఎంచుకోవడంలో సహాయం చేయగలను, ఏ model గురించైనా, దాని ధర గురించైనా చెప్పగలను, test ride book లేదా cancel చేయగలను. మీరు ఏం చూస్తున్నారు?",
+    "ml-IN": "നിങ്ങളുടെ ആവശ്യത്തിന് പറ്റിയ Honda തിരഞ്ഞെടുക്കാൻ സഹായിക്കാം, ഏത് model-നെ കുറിച്ചും അതിന്റെ വിലയെ കുറിച്ചും പറയാം, test ride book ചെയ്യാനോ cancel ചെയ്യാനോ പറ്റും. എന്താണ് നോക്കുന്നത്?",
+    "kn-IN": "ನಿಮ್ಮ ಅಗತ್ಯಕ್ಕೆ ಸರಿಹೊಂದುವ Honda ಆಯ್ಕೆ ಮಾಡೋಕೆ ಸಹಾಯ ಮಾಡಬಹುದು, ಯಾವುದೇ model ಮತ್ತು ಅದರ ಬೆಲೆ ಬಗ್ಗೆ ಹೇಳಬಹುದು, test ride book ಅಥವಾ cancel ಮಾಡಬಹುದು. ನೀವು ಏನು ಹುಡುಕ್ತಿದ್ದೀರಾ?",
+}
+# Callback consent with the 5+5 read-back, from code (SPEC §20.5, DPDP): saved only after the caller's yes.
+# Changing the wording? Bump db.bookings.CONSENT_TEXT_VERSION (stored with each consent).
+LEAD_CONSENT = {
+    "hi-IN": "Confirm kar loon: kya Honda showroom aapko {phone} par is baare mein call kar sakta hai? Number sirf is callback ke liye use hoga.",
+    "en-IN": "Just to confirm: may the Honda showroom call you on {phone} about this? We'll use the number only for this callback.",
+    "ta-IN": "உறுதி செய்கிறேன்: இதைப் பற்றி Honda showroom உங்களை {phone} எண்ணில் அழைக்கலாமா? இந்த எண் இந்த callback-க்கு மட்டுமே பயன்படும்.",
+    "te-IN": "నిర్ధారించుకుంటున్నాను: దీని గురించి Honda showroom మీకు {phone} కి call చేయవచ్చా? ఈ number ఈ callback కోసం మాత్రమే వాడతాం.",
+    "ml-IN": "ഉറപ്പിക്കട്ടെ: ഇതിനെക്കുറിച്ച് Honda showroom നിങ്ങളെ {phone} എന്ന നമ്പറിൽ വിളിക്കട്ടെ? ഈ നമ്പർ ഈ callback-ന് മാത്രമേ ഉപയോഗിക്കൂ.",
+    "kn-IN": "ಖಚಿತಪಡಿಸಿಕೊಳ್ತೀನಿ: ಇದರ ಬಗ್ಗೆ Honda showroom ನಿಮಗೆ {phone} ಗೆ call ಮಾಡಬಹುದಾ? ಈ number ಈ callback ಗೆ ಮಾತ್ರ ಬಳಸುತ್ತೇವೆ.",
 }
 # One-line deflection for out-of-scope topics, offering a showroom callback.
 OUT_OF_SCOPE = {
@@ -185,8 +211,8 @@ CONFIRM_SUMMARY = {
 }
 # Said after a successful booking (spoken straight from code): the reference spelled out, a licence reminder, no SMS in the POC (SPEC §8), and a closing question.
 BOOKED_LINE = {
-    "hi-IN": "Ho gaya! {model} ki test ride {slot} ke liye book ho gayi hai. Aapka booking code hai {ref}. Apna driving licence saath laaiyega. Is demo mein SMS nahi aayega. Aur kuch madad chahiye?",
-    "en-IN": "Done! Your {model} test ride is booked {slot}. Your booking code is {ref}. Please bring your driving licence. No SMS in this demo. Anything else I can help with?",
+    "hi-IN": "Ho gaya! {model} ki test ride {slot} book ho gayi. Booking code {ref}. Driving licence saath laaiyega; is demo mein SMS nahi aayega. Aur kuch?",
+    "en-IN": "Done! Your {model} test ride is booked {slot}. Booking code {ref}. Bring your driving licence; there's no SMS in this demo. Anything else?",
     "ta-IN": "முடிந்தது! {model} test ride {slot} book ஆகிவிட்டது. உங்க booking code {ref}. உங்க driving licence கொண்டு வாங்க. இந்த demo-ல SMS வராது. வேற ஏதாவது உதவி வேணுமா?",
     "te-IN": "అయిపోయింది! {model} test ride {slot} book అయింది. మీ booking code {ref}. మీ driving licence తీసుకురండి. ఈ demo లో SMS రాదు. ఇంకా ఏమైనా సహాయం కావాలా?",
     "ml-IN": "കഴിഞ്ഞു! {model} test ride {slot} book ചെയ്തു. നിങ്ങളുടെ booking code {ref}. driving licence കൊണ്ടുവരണം. ഈ demo-യിൽ SMS വരില്ല. മറ്റെന്തെങ്കിലും സഹായം വേണോ?",

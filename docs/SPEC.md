@@ -26,7 +26,7 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 
 **In scope:** one showroom; the full current Honda India lineup (33 models) with variants; six languages (Hindi/Hinglish, English, Tamil, Telugu, Malayalam, Kannada) with the reply language following the caller (§4.1); price/spec/mileage Q&A; whether the showroom is open on a given day/time; simple two-model comparison within Honda; test-ride booking and cancellation; callback lead capture as fallback; browser client with visualizer, transcript, and live bookings panel.
 
-**Out of scope (non-goals):** PSTN/SIP telephony, Indian languages beyond the six above, *calculating* on-road prices (published Delhi on-road prices are in scope, §6), finance/EMI quotes, scraping the OEM website, multiple showrooms, an admin UI, and authentication beyond a shared demo passcode.
+**Out of scope (non-goals):** PSTN/SIP telephony, Indian languages beyond the six above, *calculating* on-road prices (published Delhi on-road prices are in scope, §6), real finance offers (demo EMI examples from code are in scope since Phase 7, §20.4), scraping the OEM website, multiple showrooms, an admin UI, and authentication beyond a shared demo passcode.
 
 ## 3. Architecture
 
@@ -47,8 +47,8 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
    Agents (handoff via tool call, no extra LLM hop per turn):
      ├─ SalesAgent   — greeting + language choice, catalog Q&A, showroom hours, comparisons, competitor pivot
      └─ BookingAgent — collects + confirms details, reserves slot, cancels
-   Decision layer (Phase 7): Laya, self-hosted on the local GPU — per-turn signals run in parallel
-                             (never delays audio); the booking-confirmation gate is the only serial call (§20)
+   Sales advisor (Phase 7): gpt-5.4-nano reads each turn in parallel (never delays audio) → caller
+                            profile → one suggested move per turn (code) → scored lead at call end (§20)
    tts_node override → streaming text transforms (§9)
    TTS: Sarvam bulbul:v4-flash, speaker "aarti_hi_customer" in all six languages,
         language_code set per turn from the session language; pronunciation dictionary
@@ -148,7 +148,8 @@ Added after a browser call hung: an Azure request stalled for the 10 s default b
 - **Failover:** with `AZURE_OPENAI_FALLBACK_DEPLOYMENT` (and optionally its own endpoint, key and model) set, `build_llm` returns LiveKit's `FallbackAdapter`: errors, 429 rate limits and stalls switch the call to the fallback; the primary is probed in the background and used again once healthy. Verified 2026-10-16 against Azure with a missing primary: the first request failed over in 1.08 s, the next went straight to the fallback (0.72 s). The model's quality must be checked with `evals.run_text_evals --deployment … --model …` before it's configured: `gpt-4.1-mini` misspoke prices in the Phase 1 benchmark. **Configured 2026-10-16 (product owner): `gpt-5.4-nano`** (deployment `voice-gpt-5.4-nano`) on the same Azure resource and key, so it covers deployment-level failures and rate limits (separate quota) but not a regional outage; a deployment in another region would. Eval with nano alone (2026-10-16): **41/45** (mini: 44–45/45). No price errors and no wrong bookings (the guard refused one booking after nano made up its own read-back, then it read back correctly); weaker at repeating fixed lines verbatim (said a booking code raw, "HND-W8X8D", so `tts_node` now spells any raw `HND-XXXXX` like `speak_reference`), one 10:30→10:00 slot slip, one 51-word reply; median first token 1.10 s (mini ~0.9 s). Fine as an emergency fallback, not as the primary.
 - **Quota protection:** `MAX_CONCURRENT_CALLS=3` per worker process (LiveKit load function; at full load new calls go to another worker or wait), plus the frontend's sign-in and token rate limits (§12) and `MAX_CALL_MINUTES` (§16).
 - **Chosen-time hint:** the LLM twice confirmed a neighbouring slot ("saade teen" 15:30 read back as 15:00). `[booking_state]` now shows "caller's chosen time": the requested time when it was free, then whatever was last read back; cleared when that slot is taken. A hint, not a refusal: a first version refused a different time once, and broke slot changes and slot-taken recovery (it called a just-taken slot "free"). The read-back remains the safeguard.
-- **Hold line** (`agent/hold.py`): if the agent has been thinking for `HOLD_AFTER_S=2` (a slow tool or LLM), it says a short fixed line in the session language ("One moment please, let me check."; `prompts.HOLD_LINE`) and carries on; the reply follows when ready. It plays on a separate background audio track (`BackgroundAudioPlayer`), so it never enters the chat history or affects turn-taking, and it's cut if the reply starts or the caller speaks. The line is synthesised by Sarvam once per language per call (prefetched at call start and on a language switch; 0.6–0.8 s, resampled 22.05 → 48 kHz). **Hold music was tried and removed** after the 2026-10-16 browser test (product owner: it didn't work well on the call).
+- **Hold line** (`agent/hold.py`): if the agent has been thinking for `HOLD_AFTER_S=2` (a slow tool or LLM), it says a short fixed line in the session language ("One moment please, let me check."; `prompts.HOLD_LINE`) and carries on; the reply follows when ready. It plays on a separate background audio track (`BackgroundAudioPlayer`), so it never enters the chat history or affects turn-taking, and once started it **finishes before the reply plays** (`tts_node` awaits `HoldAudio.before_reply`, at most 4 s; the reply's audio is synthesised meanwhile). Cutting it mid-sentence when the reply was ready sounded abrupt in the 2026-10-19 call. It stops at once if the caller speaks, and never starts if the reply is ready first. The line is synthesised by Sarvam once per language per call (prefetched at call start and on a language switch; 0.6–0.8 s, resampled 22.05 → 48 kHz). **Hold music was tried and removed** after the 2026-10-16 browser test (product owner: it didn't work well on the call).
+- **Background voices** (`NOISE_CANCELLATION`, `worker.room_options`): LiveKit's BVC filter on the caller's audio removes other people's voices before STT and turn detection. In the 2026-10-19 call a distant speaker was transcribed as Hindi and switched the call's language. BVC is billed as LiveKit voice isolation (Build plan: 100 free minutes a month; paid plans $0.0012/min after their included minutes); `nc` (noise only) is free; `off` disables it. Requires LiveKit Cloud (Phase 10 must revisit it).
 - **"10-digit" read letter by letter:** in the same test TTS said "1 0 d i g i t". The prompt and tool notes no longer mention the number of digits, and `tts_node` splits a digit-hyphen-letter token ("10-digit" → "10 digit") as a backstop.
 
 ## 5. Data model
@@ -190,6 +191,19 @@ A test ride needs a valid two-wheeler driving licence (product owner, 2026-10-15
 
 A least-privilege role for the Next.js server routes (rule 9). `frontend_reader` can read only two views in schema `frontend` (not exposed by Supabase's REST API): `frontend.bookings` (today and upcoming, **masked in SQL**: "Ravi K.", "90xxx xx345", plus model, slot, language, licence, calendar status) and `frontend.catalog` (models and base prices). It has no rights on the `public` tables or functions, every transaction is read-only, statements time out after 3 s, and it may hold at most 3 connections. The migration creates it without a password; `scripts/set_frontend_db_password.py` sets a random one (only a SCRAM-SHA-256 verifier is sent to Postgres) and writes the role's URL to `frontend/.env.local`; re-run it to rotate. `tests/integration/test_frontend_reader.py` checks the masking and every refusal.
 
+### `005_advisor_leads.sql` (applied 2026-10-20)
+
+The sales-advisor and lead tables of §20.6:
+- **Advisor data:** `bike_fit`, `finance_schemes`.
+- **Calls and leads:** `customers`, `calls`, `caller_profiles`, `call_signals`.
+- **Extended:** `leads` (customer, call, score, status, next action, callback time, interest model) and `bookings` (customer, call).
+
+Constraints and access:
+- RLS is on for every new table.
+- Check constraints cover the fit vocabulary, lead score and status, and callback consent: a consent needs its time and text version.
+- `customers.phone` is unique.
+- The frontend role gets two more masked views, `frontend.leads` and `frontend.caller_profiles`, and nothing in `public`. Integration tests check the masking and the refusals.
+
 **Concurrency test (Phase 3 exit criterion):** the Supabase session pooler caps clients at 15, so `tests/integration/test_bookings.py` opens 14 connections and fires 20 reservations on a capacity-1 slot at once (14 simultaneous, 6 queued): exactly 1 succeeds, 19 get `SLOT_UNAVAILABLE`. A deterministic companion test holds the row lock in one transaction and shows the second caller waits, then fails if the first commits and succeeds if it rolls back.
 
 ## 6. Catalog (hand-curated snapshot, not scraped)
@@ -226,6 +240,26 @@ The seed fails if two models claim the same alias, and prints a data-quality rep
 - Unicorn, SP160 and NX200 had no catalog ex-showroom price; BikeWale's (₹1,15,832 / ₹1,18,060 Single Disc / ₹1,61,296) were adopted by the product owner on 2026-10-15.
 - Rebel 500 (upcoming) has no on-road price.
 
+**Catalog completion (2026-10-20, Phase 7 step 1, §20.7), `data/catalog/_enrichment.json`:** sourced values applied by the seed script *before* the price overrides, so product-owner decisions still win.
+- **Sources:** BikeDekho's New Delhi price and specification pages, chosen because every on-road row's parts add up to its total and its variant prices matched ZigWheels and BikeWale's Delhi figures.
+- **Variant prices:** 25 of 33 models fully priced. A model priced from one source gets its range from those prices, which refreshed stale ranges, e.g. XL750 Transalp ₹11.81 L → ₹13.20 L, SP125 ₹89,280 → ₹90,498. The seed report lists every change.
+- **On-road:** rows for 28 models replaced with complete breakdowns. The electric scooters keep BikeWale's rows, which subtract the PM E-Drive subsidy (still in force, extended to March 2028); BikeDekho's don't.
+- **Mileage:** filled for 17 models with the source's label ("BikeDekho overall", "ARAI").
+- **Colours and features:** filled for every model that had none.
+- **Weight and seat height:** filled for `bike_fit`.
+- **Estimates:** mileage for 9 big bikes with no published figure, plus 6 size values, including the Rebel 300's 171 kg because BikeDekho repeats the Rebel 500's weight. They're added to `unverified_fields` or flagged `is_estimate`: used for ranking, never spoken.
+- **Product-owner decisions (2026-10-20):**
+  - CB350C and CB350RS: DLX Pro is the higher price, so BikeDekho's cheaper "STD" is our DLX.
+  - Rebel 500: on sale, at HMSI's launch price of ₹5.12 lakh, ex-showroom Gurugram (the only official figure, so the price city is Gurugram). It's sold in Gurugram, Mumbai and Bengaluru; the E-Clutch variant isn't launched and has no price.
+  - The editorial `bike_fit` tags are approved.
+- **Left empty (in `left_empty`, shown in the seed report):**
+  - SP125 Anniversary Edition: not listed by any Delhi source.
+  - Rebel 500: E-Clutch price, and on-road (no Delhi price).
+  - Activa e RoadSync Duo on-road breakdown: sources about ₹9,000 apart.
+- **Correctly empty and left so:** cc on electric scooters, range on petrol bikes, notes, booking calendar errors that never happened.
+- **SP160:** the override was extended with Double Disc at ₹1,23,570, now listed.
+- **`_finance_schemes.json`:** 3 demo EMI plans (`is_demo`). EMI is computed by `domain/finance.py`, whose tests check it against published loan figures.
+
 **Phase 2 alias and matching notes (from step 7):** add the misspellings STT actually produced: `hiness`, `hince`, `cb350hince`, `cb350 hiness`, `highness` (and keep collecting them from logs). Matching must use **longest match wins**: "Activa 125" also hits the bare alias `activa` (Activa 110) and "Shine 100" hits Shine 125's `shine`, so a shorter alias contained in a longer matched alias is dropped. Keep the fuzzy/trigram threshold tight: at 0.8 similarity, "CB350 Hiness" also matched CB350C, CB500 and CB750; ambiguous fuzzy results go back to the caller as "which one?".
 
 **Step 10 (2026-10-15): the agent reads the database.** The worker loads the whole catalog (~0.4 s) into a `Catalog` snapshot in the background while the greeting plays, so alias matching, pre-fetching, `list_bikes` and `compare_bikes` cost no database round trip mid-turn; only the trigram fallback queries Postgres (~85 ms from India). Catalog changes take effect on the next call. Results on the step 7 recordings with the live lookup (`codemix`): every expected model found in 9/9 clips (100 %); exactly the expected set in 8/9 (89 %), the difference being a clip where the caller also said "CB350" as the family name. Text-mode check: 15/15, including on-road, list, compare, a Tamil on-road breakdown and a bare "activa" (agent asks which Activa).
@@ -257,7 +291,7 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 | `record_licence` | `has_valid_licence: bool` | The caller's answer to the licence question (migration 003). Refused in the caller turn the booking started (the question can't have been answered yet: step 14 eval). A "no" ends the booking with a callback offer (`capture_lead`, reason `no_licence`). |
 | `validate_phone` | `digits: str` | The caller's words unchanged (the LLM must not convert number words: it dropped a digit once). `phone.normalize` (strips +91/0/spaces, number words, native digits), validates `^[6-9]\d{9}$`, records the number as validated. Input with no digits or number words (e.g. the caller's name) isn't counted as a try. Two failures in a row: the note says to offer a callback lead. |
 | `confirm_details` | `day_ref, time_24h, name, phone` | Slots are named by day and time, not ids (step 14: the LLM mixed up opaque slot ids); code maps them to the slot offered for the chosen model. Builds the single read-back summary in code (`prompts.CONFIRM_SUMMARY`: model, spoken slot, name, phone digit by digit grouped 5+5, "9 8 7 6 5, 4 3 2 1 0", and "with a valid driving licence") and records it as pending. Refused unless the slot was offered, the licence confirmed and the phone validated. The LLM says `say` verbatim. |
-| `book_test_ride` | `day_ref, time_24h, name, phone, caller_confirmed: bool` | **Guarded in code (`domain/booking_guard.py`, rule 6):** refused unless `caller_confirmed` is true, the licence is confirmed, a summary was read back, **the yes comes in the very next caller turn after it** (not the same reply, and not after anything else was said: step 14 found the LLM saying "changed to 11:30" without a new read-back, then booking 11:00 on the caller's yes), and slot, name (case/spacing-insensitive) and normalized phone equal the read-back exactly. Caller turns are counted once each: a preemptive draft whose transcript changed doesn't count as a turn. When `DECISION_MODE=enforce`, also requires the decision-model confirmation gate to pass (§20.3). Calls `reserve_slot` (with the session language and room). On success returns `say` (`prompts.BOOKED_LINE`, with the reference spelled "H N D, 7 K 3 Q 9"); the calendar mirror task is added in Phase 4. On `SLOT_UNAVAILABLE`, clears the read-back and returns the 2 nearest open slots on that day; `DUPLICATE_BOOKING` is reported as such. |
+| `book_test_ride` | `day_ref, time_24h, name, phone, caller_confirmed: bool` | **Guarded in code (`domain/booking_guard.py`, rule 6):** refused unless `caller_confirmed` is true, the licence is confirmed, a summary was read back, **the yes comes in the very next caller turn after it** (not the same reply, and not after anything else was said: step 14 found the LLM saying "changed to 11:30" without a new read-back, then booking 11:00 on the caller's yes), and slot, name (case/spacing-insensitive) and normalized phone equal the read-back exactly. Caller turns are counted once each: a preemptive draft whose transcript changed doesn't count as a turn. Calls `reserve_slot` (with the session language and room). On success returns `say` (`prompts.BOOKED_LINE`, with the reference spelled "H N D, 7 K 3 Q 9"); the calendar mirror task is added in Phase 4. On `SLOT_UNAVAILABLE`, clears the read-back and returns the 2 nearest open slots on that day; `DUPLICATE_BOOKING` is reported as such. |
 | `cancel_test_ride` | `reference, phone` | `bookings.normalize_reference` accepts "h n d 7 k 3 q 9", "7K3Q9", "HND-7K3Q9"; calls `cancel_booking` (needs the phone that booked). |
 | `capture_lead` | (shared, above) | |
 | `back_to_sales` | — | Hands back to `SalesAgent`. |
@@ -281,7 +315,7 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 
 **Competitor policy:** if a caller mentions another brand, acknowledge it neutrally, make **no claims** about the other product, and pivot to the closest Honda model with facts from `find_bike`. The closest Honda is picked in code (`domain/competitors.py`), not by the LLM. Example (Hinglish; `prompts.py` has one per language): "Achha, aap scooter dekh rahe hain — Honda mein Activa 125 is segment mein hai, uska mileage aur price bataun?" Do not refuse or lecture.
 
-**Out of scope** (servicing and repairs, insurance renewal or claims, finance/EMI, unrelated topics): one-line deflection plus offer a callback lead. `domain/scope.py` detects these topics in code and skips the model pre-fetch for that turn (step 14: "when should my Activa be serviced?" got pre-fetched Activa facts and an "ask which Activa" note, and the LLM answered). Plain "insurance" stays in scope: it is part of the on-road breakdown.
+**Out of scope** (servicing and repairs, insurance renewal or claims, unrelated topics; EMI left this list in Phase 7, §20.4): one-line deflection plus offer a callback lead. `domain/scope.py` detects these topics in code and skips the model pre-fetch for that turn (step 14: "when should my Activa be serviced?" got pre-fetched Activa facts and an "ask which Activa" note, and the LLM answered). Plain "insurance" stays in scope: it is part of the on-road breakdown.
 
 **Comparisons:** at most two differences; prices only when asked. When two models are pre-fetched and the turn has no price word (`scope.asks_about_price`), their price fields are left out of the facts (step 14: comparisons kept adding unasked prices, 55+ words).
 
@@ -388,13 +422,12 @@ AZURE_OPENAI_API_VERSION=2024-12-01-preview   # verified 2026-10-15; async filte
 OPENAI_API_KEY=
 GROQ_API_KEY=
 
-# Decision layer (Phase 7) — Laya, self-hosted (services/laya/run.sh, §23); fallback: LLM structured output
-DECISION_PROVIDER=laya           # laya | llm_fallback
-DECISION_MODE=off                # off | shadow | enforce
-DECISION_TIMEOUT_MS=600
-LAYA_BASE_URL=http://127.0.0.1:8100   # local laya-serve, Jev-compatible POST /v1/systemone
-LAYA_MODEL=multilingual          # Laya checkpoint for Indic/code-mixed turns: multilingual | english
-LAYA_API_KEY=                    # only if laya-serve is started with LAYA_API_KEY
+# Sales advisor (Phase 7, §20): caller signals from gpt-5.4-nano (the fallback deployment); Laya optional (§23)
+ADVISOR=on                       # on | shadow (signals logged, no coach line) | off
+SIGNAL_PROVIDER=nano             # nano | laya
+SIGNAL_DEPLOYMENT=voice-gpt-5.4-nano
+LAYA_BASE_URL=http://127.0.0.1:8100   # only with SIGNAL_PROVIDER=laya: local laya-serve
+LAYA_MODEL=multilingual
 
 # Optional API service (§22) — when enabled, the frontend calls it instead of the DB
 API_BASE_URL=                    # e.g. http://localhost:8000; empty = Next.js routes read the DB
@@ -471,8 +504,14 @@ Ordered to remove the biggest risk (voice quality and latency) first.
 
 Known LLM variance (not fixed, reported): occasional 41–50-word replies, rare neighbouring-slot confusion (the read-back exposes it), rare script slips in Indian languages.
 
-**Phase 7 — Decision layer, self-hosted Laya (§20, §23).** `DecisionModel` interface + Laya client (local `laya-serve`) + LLM fallback; migration 005; parallel per-turn signals; confirmation gate. Run in `shadow` mode across the full eval suite and demo calls, then switch to `enforce` only for gates that clear their targets.
-*Exit:* §20.5 targets met on the labelled set; p50 TTFA unchanged (±50 ms) vs Phase 6 on non-confirmation turns.
+**Phase 7 — Sales advisor and leads (§20).** Redesigned 2026-10-19 (product owner): caller understanding on gpt-5.4-nano instead of Laya (§23.2b), no booking-confirmation gate, one advisor-style SalesAgent. Steps:
+0. **Done 2026-10-20.** Two fixes from the 2026-10-19 live call: background-voice cancellation (`NOISE_CANCELLATION`, LiveKit BVC) and a hold line that finishes before the reply instead of being cut.
+1. Data: catalog completion (§20.7), `bike_fit`, demo `finance_schemes`, migration 005, masked frontend views. **Done 2026-10-20** (§5, §6).
+2. Understanding: signal provider (nano; Laya optional), profile merge, `call_signals`, `caller_profiles`, labelled set. **Built 2026-10-20** (§20.9); live latency check pending.
+3. Advisor: `recommend_bikes`, `emi_examples`, next-move rules, coach line, new intro, scenarios. **Built 2026-10-20** (§20.10).
+4. Leads: consent, lead score, call summary, `customers`, Leads and Caller-profile panels, CSV export, privacy notice. **Built 2026-10-20** (§20.11).
+5. Optional, later: train Laya on nano's labels; switch provider only if it matches nano.
+*Exit:* §20.8 targets met; all existing scenarios pass; p50 TTFA unchanged (±50 ms) vs Phase 6.
 
 **Phase 8 — LangGraph orchestration, A/B (§21).** Build the graph behind `ORCHESTRATOR=langgraph` without removing the native path. Run the latency A/B across three router configs.
 *Exit:* latency report comparing configs in §21.3; decision recorded here (adopt / adopt with decision-model router / stay native) with reasons.
@@ -486,7 +525,7 @@ Known LLM variance (not fixed, reported): occasional 41–50-word replies, rare 
 **Phase 11 — Local Postgres (§24).** Replace hosted Supabase with `postgres:16` in Docker, migrations applied on first start, catalog re-seeded. Only `DATABASE_URL` changes.
 *Exit:* all integration tests and evals pass against local Postgres; data export/import path from Supabase documented.
 
-Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya, which is open source and runs on the local GPU (§23). Laya is part of Phase 7, not a separate phase.
+Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya (§23); Laya in turn was replaced by gpt-5.4-nano for caller understanding on 2026-10-19 (§23.2b) and stays an optional provider.
 
 ## 15. Testing and evals
 
@@ -503,7 +542,7 @@ Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya, which is op
 - `test_calendar_sync.py`: fake calendar against the real database: sync, outage then retry, permanent error not retried, cancel, cancel racing an insert. `tests/test_gcalendar_client.py` covers the client's status handling offline.
 
 **Conversation evals (`evals/`):**
-- `scenarios/*.yaml` (step 14): **45 scripted text conversations** in 11 files: price ×6, comparison ×3, competitor ×3, booking happy path ×5, misheard/invalid phone ×3, slot taken ×2, cancellation ×2, out of scope ×3, language (intro, switches, explicit request) ×4, Tamil/Telugu/Malayalam/Kannada price + booking ×8, other paths ×6 (hours, budget list, one spec, upcoming model, no licence, price question mid-booking). Each turn gives the caller's words and the STT language; expectations are per turn (`tools`, `no_tools`, `slots_checked`, `says_any/all/none`, `price`, `language`, `intro`, `honda_pivot`, `max_words`) and per scenario (`booked`, `cancelled`, `book_errors`, `leads`, and the stored booking row: model, time, name, phone, language, licence). Hooks simulate other callers taking the slot; cancellations use a booking made before the call.
+- `scenarios/*.yaml` (step 14): **45 scripted text conversations** in 11 files: price ×6, comparison ×3, competitor ×3, booking happy path ×5, misheard/invalid phone ×3, slot taken ×2, cancellation ×2, out of scope ×3, language (intro, switches, explicit request) ×4, Tamil/Telugu/Malayalam/Kannada price + booking ×8, other paths ×6 (hours, budget list, one spec, upcoming model, no licence, price question mid-booking). Each turn gives the caller's words and the STT language; expectations are per turn (`tools`, `no_tools`, `slots_checked`, `time_24h` (the time the LLM extracted; added 2026-10-20 after "shaam saade chaar" came out as 15:30/15:45), `says_any/all/none`, `price`, `language`, `intro`, `honda_pivot`, `max_words`) and per scenario (`said_any` (any reply in the call; added in Phase 7), `booked`, `cancelled`, `book_errors`, `leads`, and the stored booking row: model, time, name, phone, language, licence). Hooks simulate other callers taking the slot; cancellations use a booking made before the call.
 - `scenarios/demo.yaml` (Phase 6): the live demo script ([DEMO.md](DEMO.md)) as one conversation, so it's re-proven by every pre-demo check. 46 scenarios in total.
 - **Pre-demo check:** `scripts/check_all.sh` runs lint, unit, database and frontend tests and the conversations (`--min-pass 0.95`: LLM variance), and prints a pass/fail summary; `SKIP_EVALS=1` for the quick version.
 - `run_text_evals.py` runs them against the real LLM and database through `session.run()`, with no audio, and checks every turn for: reply language and script, ≤ 40 words (41–50 is a warning; a scenario can allow more, e.g. a full on-road breakdown), prices verbatim from tool output (a Tamil case ending on the rupee word is accepted), echoed tags, booking only on a turn where the caller said yes, licence recorded only after a yes. Bookings use room `eval-text` and are cancelled and deleted afterwards; leads with eval numbers (90000xxxxx) too. Flags: `--only`, `--tag`, `--deployment/--model`. It replaces the Phase 1 and step 13 one-off scripts.
@@ -538,14 +577,16 @@ honda-voice-poc/
 ├── .env.example
 ├── docker-compose.yml          # Phase 10/11 only: local LiveKit + Postgres (§24)
 ├── .gitignore
-├── services/laya/run.sh        # starts the local Laya decision server (§23)
+├── services/laya/run.sh        # optional local Laya server (§23)
 ├── data/
-│   ├── catalog/                # one JSON per model + _index.json
+│   ├── catalog/                # one JSON per model + _index, _enrichment (sourced fill), _price_overrides,
+│   │                           #   _on_road_delhi, _stt_aliases, _finance_schemes (demo EMI)
 │   └── migrations/
 │       ├── 001_init.sql
 │       ├── 002_booking_functions.sql
 │       ├── 003_driving_licence.sql
-│       └── 004_frontend_reader.sql
+│       ├── 004_frontend_reader.sql
+│       └── 005_advisor_leads.sql
 ├── scripts/
 │   ├── build_catalog.py        # regenerates data/catalog/
 │   ├── apply_migrations.py     # applies data/migrations in order, records them
@@ -572,14 +613,19 @@ honda-voice-poc/
 │   │   ├── booking_guard.py      # read-back-before-write rules (rule 6)
 │   │   ├── calendar_event.py     # booking -> calendar event (stable id, masked phone)
 │   │   ├── competitors.py        # competitor model -> closest Honda (rule 11)
+│   │   ├── advisor.py            # next-move rules from the caller profile (§20.3)
+│   │   ├── recommend.py          # rank models for a need (§20.4)
+│   │   ├── finance.py            # demo EMI from scheme + catalog price
+│   │   └── lead_score.py         # hot / warm / cold
 │   │   └── scope.py              # out-of-scope topics, price questions
 │   ├── integrations/
 │   │   └── gcalendar.py          # Calendar API client: create/get/delete event
-│   ├── decisions/                # Phase 7
-│   │   ├── base.py               # DecisionModel protocol (choice / score / probability)
-│   │   ├── laya_client.py        # Laya (local laya-serve) implementation, timeout (§23)
-│   │   ├── llm_fallback.py       # same interface via LLM structured output (baseline)
-│   │   └── questions.py          # typed question definitions (§20.2)
+│   ├── decisions/                # Phase 7 (§20)
+│   │   ├── base.py               # SignalProvider protocol
+│   │   ├── nano_signals.py       # gpt-5.4-nano structured output (default)
+│   │   ├── laya_client.py        # optional local Laya provider (§23)
+│   │   ├── questions.py          # profile questions (§20.2)
+│   │   └── profile.py            # merge signals into the caller profile
 │   ├── graph/                    # Phase 8
 │   │   ├── state.py
 │   │   ├── router.py             # decision | rules | llm
@@ -624,10 +670,10 @@ honda-voice-poc/
 | Bulbul pronunciation of numbers and codes | Unclear prices or reference codes | Phase 1 listening test; pronunciation dictionary |
 | Package versions (`livekit-agents`, Sarvam plugin) | API drift from snippets | Verify against docs; pin in pyproject |
 | Catalog freshness | Wrong prices in demo | `price_as_of` spoken via "ex-showroom" note; re-seed before demo |
-| Laya accuracy on code-mixed Indic transcripts (Tamil, Telugu, Kannada, Malayalam aren't benchmarked in its README) | Wrong routing or gate decisions | Shadow mode + per-language labelled set before enforce (§20.5); `llm_fallback` per question |
-| Laya is young (0.4.x, frequent releases) | API or behaviour changes | Pin `laya==0.4.7`; `DecisionModel` interface with LLM fallback; gate fails safe to re-confirmation |
+| Wrong caller profile (nano misreads a turn) | A less relevant question or suggestion | Low stakes by design: no gate depends on it; one move per turn, which the LLM may skip; labelled set per language (§20.8) |
+| Advisor feels pushy | Callers disengage | ≤ 1 question per turn, ≤ 4 per call, caller's question first, no push for browsers, callback on frustration (§20.3) |
+| Profiling and callbacks (DPDP) | Consent and purpose | Explicit callback consent stored with time and text version; categories only; privacy notice updated (§20.5) |
 | LangGraph adds per-turn latency | Slower agent | Phase 8 A/B; non-LLM router; no buffering nodes |
-| Laya needs the local machine's GPU | Slower or unavailable gate on other machines | CPU fallback (~0.2–0.5 s per call per README); timeout + fail-safe; provider switchable to `llm_fallback` |
 | In-memory rate limits (sign-in, tokens) | With several Next.js instances each keeps its own counters, so limits multiply; `X-Forwarded-For` is trusted for the client IP | Fine for one instance behind a trusted proxy; use a shared store (e.g. Redis) and the host's real-IP header before scaling |
 | Shared demo passcode | Anyone who has it can start calls (cost) and see the masked bookings panel | Rotate after demos; real login (or phone-number calling) for production; tokens and calls are capped (10 a minute, 10-minute calls) |
 | Supabase session pooler allows 15 clients | Connection errors with several workers or the FastAPI service | Worker pool `max_size=5`; move to the transaction pooler (port 6543, `statement_cache_size=0`) or a paid tier before scaling out |
@@ -635,82 +681,218 @@ honda-voice-poc/
 
 ---
 
-## 20. Decision layer (Phase 7, Laya)
+## 20. Sales advisor and leads (Phase 7)
 
-Laya (Convai Innovations, Apache-2.0) is a non-generative "System One" model: given a context and typed questions, it returns a **choice** from fixed options, a **score** on a rubric, or a **probability** that a statement is true, each with a confidence value. It cannot produce free text, so it complements the LLM rather than replacing it. **Use Laya for judgments, code for rules, and the LLM for replies.**
+**Decision (2026-10-19, product owner):** the decision layer becomes a **sales-advisor layer**. It works out what the caller is looking for, steers the conversation toward a test ride or a callback, and turns the call into a scored lead. Three choices were made with it:
+- **Caller understanding runs on Azure `gpt-5.4-nano` (structured output), not Laya.** Laya measured 67–78 % on Indic transcripts against nano's 96–100 % (§23.2b). Laya stays installed as an optional provider and a later distillation target (Phase 7.5).
+- **The booking-confirmation gate is dropped.** The code guard in `domain/booking_guard.py` (rule 6) remains the only gate, and no model call is serial in the voice path.
+- **One advisor-style SalesAgent, not a separate lead agent.** Callers move between needs and named models within seconds ("scooty for my mom" → "Activa price?" → "is the Dio lighter?"), and each handoff costs an extra LLM step (~1 s). Booking stays separate because it's a guarded step-by-step flow.
 
-It runs self-hosted (§23): `laya==0.4.7`, checkpoints `laya-multilingual` (mmBERT-base, 322 M params) and `laya` (ModernBERT-large, 421 M), served by `laya-serve` on the local GPU behind the Laya-compatible `POST /v1/systemone` API.
+**Roles:** nano judges what the caller wants, code decides what to do about it, and the reply LLM writes the words. Nothing here decides prices, EMIs, dates, slots or phone validity.
 
-The decision layer is **provider-neutral**: `DECISION_PROVIDER` picks the implementation behind the `DecisionModel` interface (`laya` or `llm_fallback`); thresholds and gates don't change.
+### 20.1 Flow
 
-### 20.1 Where Laya sits
-
-| Use | Path | Effect on latency |
-|---|---|---|
-| Per-turn signals (intent, competitor, out-of-scope, frustration, wants-human, purchase intent) | **Parallel**: fired when the user turn completes, alongside the LLM. Results apply from the *next* turn and to logging. | None on the current turn |
-| Booking-confirmation gate | **Serial**, only on the turn where the caller answers the confirmation summary | One Laya call (~30–60 ms per question on the local GPU; measured in Phase 7) on one turn per booking |
-| LangGraph router (Phase 8) | Serial, every turn when `ORCHESTRATOR=langgraph` and `LG_ROUTER=decision` | One Laya call per turn |
-
-Laya never decides prices, dates, slot availability, or phone validity. Those stay in `domain/` and the DB.
-
-### 20.2 Questions (`decisions/questions.py`)
-
-Context = the last 4 turns of transcript plus the agent's current state (`awaiting_confirmation`, `active_agent`).
-
-| Key | Primitive | Options / rubric |
-|---|---|---|
-| `intent` | choice | `catalog_question, price_question, compare, book, cancel, competitor_mention, out_of_scope, smalltalk, wants_human` |
-| `confirms_booking` | probability | "The caller clearly agreed to proceed with the booking exactly as summarised (model, day, time, name, number)." Asked only when `awaiting_confirmation`. |
-| `corrects_detail` | choice | `none, model, day_time, name, phone`. Asked only when `awaiting_confirmation`. |
-| `frustration` | score 1–5 | 1 = calm … 5 = angry or about to hang up |
-| `purchase_intent` | score 1–5 | 1 = just browsing … 5 = ready to buy this month |
-
-All questions for one turn go in **one** request.
-
-### 20.3 How signals are used (`DECISION_MODE=enforce`)
-
-- **Confirmation gate:** `book_test_ride` proceeds only if `confirms_booking ≥ 0.85` and `corrects_detail = none`. Between 0.5 and 0.85, or on timeout or error, the agent re-confirms once more ("Bas confirm kar rahi hoon — kal shaam 5 baje, Activa 125, theek hai?"). Below 0.5, or any correction, the agent goes back to the field in question. This catches answers like "haan… nahi ruko, kal nahi" where the LLM might still set `caller_confirmed=True`.
-- **Escalation:** `wants_human` (confidence ≥ 0.8), or `frustration ≥ 4` on two consecutive turns, injects a note into the next turn's instructions so the agent offers a showroom callback via `capture_lead`.
-- **Lead scoring:** the maximum `purchase_intent` in the call is stored on the booking or lead and shown in the frontend panel (hot / warm / cold).
-- **Competitor / out-of-scope:** logged and used for analytics only. The prompt handles the reply; Laya does not override it.
-
-`DECISION_MODE=shadow`: run every question, log the results, and change nothing. `off`: no calls.
-
-### 20.4 Storage — `005_call_signals.sql`
-
-```sql
-create table public.call_signals (
-  id          bigserial primary key,
-  room_name   text not null,
-  turn_index  int  not null,
-  question    text not null,
-  answer      text not null,          -- option, score, or probability as text
-  confidence  numeric(4,3),
-  latency_ms  int,
-  model       text not null,          -- Laya checkpoint + version, or 'llm-fallback'
-  created_at  timestamptz not null default now()
-);
-alter table public.call_signals enable row level security;
-
-alter table public.bookings add column purchase_intent smallint;
-alter table public.leads    add column purchase_intent smallint;
+```
+caller turn ─► STT ─► reply LLM (SalesAgent) ──────────────────────────► TTS        unchanged; no added delay
+                 │          ▲  coach line (one suggested move) + recommend_bikes / emi_examples tools
+                 │          │
+                 ▼          │
+        nano signals (parallel, ~1.3 s) ─► caller profile ─► next-move rules (code, domain/advisor.py)
+                                                 │
+                         call end ───────────────┴─► calls row, lead + score, summary ─► Leads panel / CSV
 ```
 
-### 20.5 Evaluation before `enforce`
+- **Signals** fire when a caller turn is final, in parallel with the reply, over the last 4 turns plus agent state. Results merge into the profile and apply from the **next** turn. A late or failed call changes nothing; it never delays audio.
+- **Same turn:** the reply LLM reads the caller's words itself. For a need with no model named, it calls `recommend_bikes` with what it heard, so the first answer doesn't wait for the profile.
 
-Build a labelled set from the eval scenarios and demo transcripts:
-- 60 single turns labelled for `intent`, covering all six languages (at least 6 per language), including mis-transcribed brand names.
-- 40 confirmation-turn answers across the six languages, including tricky ones ("haan theek hai", "haan par number galat hai", "ek minute", "nahi kal nahi parson", "ok ok", "aamaa, aana number thappu").
+### 20.2 Profile questions (`decisions/questions.py`)
 
-Compare Laya against `llm_fallback.py` (same questions through the LLM's structured output) on accuracy, calibration, and latency.
+| Key | Type | Values |
+|---|---|---|
+| `intent` | choice | `specific_model, price, compare, recommendation, finance, booking, cancel, competitor, out_of_scope, smalltalk, wants_human` |
+| `use_case` | choice | `commute, family_errands, long_rides, college, delivery, weekend_fun, unknown` |
+| `rider` | choice | `self, parent, child, spouse, other, unknown` |
+| `priorities` | multi-choice | `price, mileage, power, ease, comfort, style, electric, safety` |
+| `budget_inr` | amount | the most the caller wants to spend, in rupees, or null. **Code** maps it to `budget_band` (`under_80k, 80k_1_2l, 1_2l_2l, over_2l`): asked for a band directly, nano put "ninety thousand" under 80,000 (2/18 right) |
+| `timeline` | choice | `this_week, this_month, 1_3_months, later_or_browsing, unknown` |
+| `experience` | choice | `first_two_wheeler, upgrading, replacing, unknown` |
+| `payment_interest` | multi-choice | `emi, exchange` |
+| `objection` | choice | `price_high, waiting_time, comparing_brand, mileage_doubt, none` |
+| `frustration`, `purchase_intent` | score 1–5 | calm … angry; browsing … buying this month |
+| `wants_human` | probability | asks for a person or a callback |
 
-| Gate | Target to enable |
+The profile keeps a value only above a confidence threshold, and a later clear answer replaces an earlier one ("actually up to 1.5 lakh"). Categories only: no transcript text and no sensitive inferences (income, caste, religion, health).
+
+### 20.3 Next-move rules (`domain/advisor.py`, pure)
+
+Code picks **at most one** move per turn and adds it to the reply prompt as a single line, for the LLM to phrase or skip. Examples:
+
+| Profile | Move |
 |---|---|
-| Confirmation gate | 0 false accepts on the 40 confirmation turns; ≤ 10 % unnecessary re-confirmations |
-| Intent (analytics, escalation) | ≥ 90 % accuracy; p90 latency ≤ 500 ms |
-| Frustration / purchase-intent scores | Agreement within ±1 of human label on ≥ 80 % |
+| A model was asked about, use unknown | After answering, ask one question about use ("mostly office travel or longer rides?") |
+| A need is known but no model chosen | Suggest 2 models from `recommend_bikes` |
+| Parent, or first two-wheeler | Mention easy handling, then the test ride |
+| `price_high` objection | Lower variant price and the demo EMI example (tool output only), "the showroom confirms actual offers" |
+| `comparing_brand` | Honda strength only (competitor policy, rule 11) |
+| `purchase_intent ≥ 4` or `this_week`/`this_month` | Offer a test ride; if declined, a callback |
+| EMI interest | One demo example from `emi_examples` |
+| Exchange interest | Showroom callback for an exchange quote (no exchange values) |
+| `frustration ≥ 4` or `wants_human` | No more questions: offer a callback straight away |
+| `later_or_browsing` | No pushing: answer, then offer to note the number for updates |
 
-If Laya misses a target, keep that question in `shadow` or switch it to `llm_fallback`.
+**Limits:**
+- The caller's own question is always answered first.
+- At most one discovery question per turn, and at most 4 per call.
+- Never ask again about something already known.
+- No moves during BookingAgent steps.
+
+### 20.4 Tools
+
+- `recommend_bikes(use_case, rider, priorities, budget_inr, experience)`: code ranks on-sale models using `bike_fit` (ease, weight, seat height, uses) and the catalog (segment, mileage, price), and returns the top 2–3 with one reason each. The LLM never picks or invents a bike.
+- `emi_examples(model, variant?)`: `domain/finance.py` computes EMI = P·r·(1+r)^n / ((1+r)^n − 1) from the catalog ex-showroom price and each demo scheme. Spoken from tool output only, like prices (rule 4), always with "example only; the showroom confirms the actual terms".
+- `capture_lead` (extended): asks for explicit callback consent, uses the same phone validation and 5+5 read-back as bookings, and stores consent with its time and text version.
+
+### 20.5 Leads and the customer list
+
+- **Every call** gets a `calls` row and a `caller_profiles` row, including anonymous ones. These feed insights such as top needs and objections by language.
+- **Lead score** (`domain/lead_score.py`, code): from `purchase_intent`, timeline, engagement (models discussed, recommendation accepted), booking and consent. Hot ≥ 70, warm 40–69, cold < 40.
+- **Call end:** nano writes a 2–3 sentence summary with no phone number or name, for the person calling back. It runs after the call, so the caller never waits for it.
+- **Consenting callers** get a `customers` row. A lead, or a booking, links to it, and that table is the customer list. A later Honda CRM/DMS integration would read `customers` and `leads`.
+- **Frontend:** a **Leads** panel sorted by score (phone masked, summary, status) with a CSV export, plus a live **Caller profile** panel next to the transcript. The panels are behind the sign-in cookie and read masked views.
+
+### 20.6 Schema — `005_advisor_leads.sql`
+
+RLS is enabled on every new table, and the frontend reads only masked views in schema `frontend`.
+
+| Table | Columns |
+|---|---|
+| `finance_schemes` (demo) | `id, name, interest_rate_pct, tenure_months int[], min_down_payment_pct, processing_fee_inr, is_demo bool not null default true, as_of` |
+| `bike_fit` | `bike_id pk/fk, kerb_weight_kg, seat_height_mm, ease_score 1–5, use_cases text[], rider_fit text[], source, is_estimate bool` |
+| `customers` | `id uuid, phone unique, name, preferred_language, callback_consent bool, consent_at, consent_text_version, first_seen_at, last_contact_at` |
+| `calls` | `id, room_name unique, started_at, ended_at, languages text[], customer_id null, outcome (info/booked/lead/cancelled/dropped), summary, max_purchase_intent` |
+| `caller_profiles` | `call_id pk/fk, use_case, rider, priorities text[], budget_band, timeline, experience, payment_interest text[], objections text[], models_discussed text[], models_suggested text[], confidence jsonb, updated_at` |
+| `call_signals` | `id, call_id, turn_index, question, answer, confidence, provider (nano/laya), latency_ms, created_at` |
+| `leads` (extended) | + `customer_id, call_id, score, score_value, status (new/contacted/converted/closed), next_action, callback_after, contacted_at, interest_bike_id` |
+| `bookings` (extended) | + `customer_id, call_id` |
+
+### 20.7 Catalog completion (approved 2026-10-19)
+
+- **Real values with a source wherever they exist:** variant prices, mileage, colours, features and the on-road breakdown, from honda2wheelersindia.com first, then BikeWale, Autocar India or ZigWheels. The URL and date go in the existing source fields.
+- **Estimates only for descriptive values** (fit tags, a missing mileage or size), flagged in `unverified_fields` / `bike_fit.is_estimate`: used for ranking, **never spoken** (unverified fields never reach the LLM; stricter than "say around", decided while building step 1).
+- **Prices are never estimated.** A variant price that can't be sourced stays empty, and the agent gives the model's sourced range instead.
+- **Empty values that are correct stay empty:** cc on electric scooters, range on petrol bikes, booking calendar errors that never happened, notes.
+
+### 20.8 Evaluation
+
+- **Labelled set:** about 150 turns across all six languages, including multi-turn context. ≥ 90 % accuracy per language for `use_case`, `rider`, `priorities`, `timeline`; ±1 agreement on the scores for ≥ 80 % of turns. Compared per provider (nano, Laya).
+- **New scripted conversations:**
+  - mom's scooter (ease plus mileage);
+  - budget commuter;
+  - delivery rider asking about electric;
+  - price objection, with EMI from the tool only;
+  - just browsing (no push);
+  - frustrated caller (callback offered, no questions);
+  - callback consent producing a lead with the right score.
+- **Guarantees:** all existing scenarios still pass, 0 invented prices or EMIs, and p50 TTFA unchanged (±50 ms), since the signals run in parallel.
+
+
+### 20.9 Step 2 as built (2026-10-20)
+
+**Code:**
+
+| File | Role |
+|---|---|
+| `decisions/questions.py` | Questions, schema and budget bands |
+| `decisions/nano_signals.py` | Strict JSON schema, `reasoning_effort=minimal`, no retries |
+| `decisions/laya_client.py` | Optional Laya provider |
+| `decisions/profile.py` | Merge rules |
+| `agent/advisor.py` | Runtime: one background request per committed caller message (`conversation_item_added`, so discarded drafts don't count); 8 s timeout; a failure is logged and skipped |
+| `db/calls.py` | Call row, per-turn signals, profile, outcome; bookings linked by room, leads by `call_id` |
+
+`ADVISOR=shadow` records signals without changing the call (the default until step 3 turned it `on`).
+
+**Labelled set** (`evals/signals/cases.yaml`, `uv run python -m evals.signals_labelled`):
+- 25 situations × 6 languages = 150 turns, 5 of them multi-turn.
+- **nano: 96–99 % per language** (target 90 %), p50 1.2 s, p90 1.4 s per turn, run in parallel with the reply.
+- **Laya `multilingual`: 49–57 %.**
+
+The first nano run scored 90–94 %. Three changes to the questions fixed it:
+- budget asked as an amount, with code picking the band;
+- "compare" limited to two Honda models;
+- "self" made the default rider when callers describe their own riding.
+
+These were tuned on the same set, so live calls are the real check.
+
+
+### 20.10 Step 3 as built (2026-10-20)
+
+**Ranking (`domain/recommend.py`):** on-sale models only, scored on:
+- use case (+3);
+- ease, for a parent, spouse or child rider, a first two-wheeler or an "ease" priority: (ease − 3) × 1.5, +1.5 if gearless, −4 if tagged for experienced riders;
+- mileage, capped at +2 so it never decides alone;
+- electric (+5 or −3), power, price, comfort, style, ABS.
+
+Budget: up to 5 % over still counts; when fewer than 2 models fit, the cheapest over-budget ones are added and marked. Weak fillers (< 60 % of the best score) are dropped. Reasons come from verified facts only. Tuning examples:
+- An early version recommended the Shine 100, a geared motorcycle, for a mother wanting easy handling; the gearless bonus and the mileage cap fixed it.
+- "Good mileage" briefly ranked electric scooters first; that bonus was lowered.
+
+**Tools:**
+- `recommend_bikes`: tool arguments win; the caller profile fills in anything this turn didn't say. Suggested models go into `models_suggested`.
+- `emi_examples`: amounts from `domain/finance.py`, returned in `*_spoken` fields, so the price checks cover them.
+
+**Moves (`domain/advisor.py`), in priority order:** callback, price objection, EMI, exchange, browsing (no push), suggest, test ride, then discovery questions (use, rider, budget, timeline; at most 4).
+- Each move is suggested once per call.
+- No moves during booking; after a callback offer, no more selling.
+- The coach line is computed once per caller turn, so tool steps reuse it.
+- `ADVISOR=on` adds it; `shadow` records only.
+
+**Prompt changes:**
+- EMI is in scope via the tool; exchange is a callback.
+- `recommend_bikes` is used for needs.
+- A caller who says they want to buy soon, without asking for a test ride, is offered one of that model. The rule sits in the test-ride section after "call start_booking right away" and has no example question: worded as "ask whether they'd like a test ride ('Would you like…?')", it made the agent answer "Can I test ride the Hornet tomorrow?" with "shall I book it?" in about half the runs.
+- The caller is addressed with neutral forms. Hinglish replies had used feminine forms for the caller ("bata dengi").
+- The intro now leads with "find the right Honda for your needs".
+
+**Scenarios (`advisor.yaml`, real nano signals between turns):** mom's scooter, budget commuter, Tamil delivery EV, price objection with EMI, browsing, frustrated caller, ready buyer.
+- 6 of 7 passed on the first run.
+- The ready-buyer scenario now checks `said_any` for the whole call, since the offer can come in turn 2 or 3 and a yes may already start the booking.
+- After the prompt fixes: Hornet booking 4/4, ready buyer 3/3.
+
+
+### 20.11 Step 4 as built (2026-10-20)
+
+**Callback consent (DPDP)**
+- `capture_lead` with a number first returns `prompts.LEAD_CONSENT`: the number read back 5+5 and "may the showroom call you about this? We'll use the number only for this callback". It's spoken from code, without a second LLM call; `_fixed_tool_reply` now lives in `MultilingualAgent` with a per-agent `FIXED_SAY_TOOLS`.
+- It saves only on a later call with `caller_confirmed=true`, in a later caller turn, for the same number (`CallState.lead_pending`). A "no" saves nothing.
+- Saving upserts `customers` (one row per number) with `callback_consent`, `consent_at` and `consent_text_version` (`db.bookings.CONSENT_TEXT_VERSION`; bump it when the wording changes). The lead then links to that customer. Consent is only ever added, never removed by a later call.
+- Without a number (two failed tries), a lead is saved with no customer and no consent, as before.
+
+**At call end** (`Advisor.close`, in the worker's shutdown, so the caller never waits):
+- nano writes a 2–3 sentence English summary. The prompt asks for no names, numbers or codes, and to say "the caller" (never he/she). `decisions.summary.scrub` also removes digit runs of 5+, "HND …" codes and known names.
+- `domain/lead_score.py` scores the call's leads:
+  - buying interest: (max − 1) × 12;
+  - timeline: this week 25, this month 20, 1–3 months 15;
+  - models discussed or suggested: 5 each, up to 10;
+  - booked: +20; asked about payment: +5; frustrated: −10.
+  - Bands: hot ≥ 70, warm 40–69, cold < 40, plus one next-action line.
+- `calls.finish` links this call's bookings to customers (a booking is **not** a callback consent), scores its leads, and sets `calls.customer_id`.
+
+**Frontend** (sign-in cookie, masked views only):
+- `GET /api/leads`: hottest first.
+- `GET /api/leads/export`: CSV; cells starting with `= + - @` are prefixed with `'` against CSV injection.
+- `GET /api/profile?room=`: only token-route room names, else 400.
+- Side panel: a **Leads** tab with a CSV download, and a live **Caller profile** card (polled every 3 s) during a call.
+- Privacy notice: the categories noted, the call summary, and consent before any callback.
+
+**Checks:**
+- Unit tests for consent (same-turn yes and a different number are refused), score bands and actions, summary scrubbing, and the fixed consent line.
+- Database tests: consent kept on upsert; `finish` links bookings, scores leads and sets the customer.
+- Vitest: 18 tests, including the new routes and CSV injection.
+- Scenarios: callback with consent → 1 lead + 1 consented customer; declined → none. The no-licence scenario gained its "yes" turn.
+
+**Harness:** the price checks accept any tool output from earlier in the same call. A Tamil caller's "ok" got the previous turn's price repeated and was flagged as not from a tool. Consequence: a turn's `price: true` can also be met by repeating an earlier price.
+
+**Related fix:** for a test-ride request, the prefetched facts no longer add the "which model?" note for family names. With it, "test ride the CB350 tomorrow" got a "which CB350?" question instead of the handoff (1 run in 3); BookingAgent asks which model itself.
 
 ---
 
@@ -724,7 +906,7 @@ Native LiveKit handoffs cover the POC. LangGraph earns its cost if the product g
 
 - Graph: `route → sales_node | booking_node → END`. Each node is a **streaming** LLM node with the same tools as §7.
 - **No guardrail node.** Speech transforms stay in `tts_node` (§9). A node that post-processes the full reply forces buffering and erases streaming.
-- Router: `LG_ROUTER=decision` (Laya `intent` question mapped to a node), `rules` (sticky state: stay in the current node unless a handoff tool fired), or `llm`. Prefer `decision` or `rules`.
+- Router: `LG_ROUTER=decision` (the `intent` signal mapped to a node; serially this needs a fast provider, and Laya's intent accuracy was weak in §23.2b, so measure first), `rules` (sticky state: stay in the current node unless a handoff tool fired), or `llm`. Prefer `decision` or `rules`.
 - Checkpointer: in-memory per call in the hot path. Persist to Postgres only at call end (or asynchronously), never synchronously per turn.
 - Wire into LiveKit through its LangChain/LangGraph adapter (verify the current API) so STT, TTS, VAD, and turn detection stay unchanged.
 
@@ -788,7 +970,7 @@ Rules:
 
 ---
 
-## 23. Laya, self-hosted (decision provider for §20)
+## 23. Laya, self-hosted (optional signal provider for §20)
 
 ### 23.1 What it is and why local
 
@@ -816,25 +998,27 @@ Two questions per call (`confirms_booking` noul + `corrects_detail` choice) on 1
 - **Usefulness, out of the box: poor.** All 6 clear "yes" answers fell short of the gate (Hinglish 0.84, English 0.69, Kannada "ಹೌದು, ಬುಕ್ ಮಾಡಿ" 0.00, Malayalam 0.28), and `corrects_detail` was right in only 6/11 (Tamil and Telugu "yes" were classed as `phone`).
 - So the gate would fail safe (always re-confirm) but add a turn to every booking. Phase 7 must measure it on the full labelled set, try question wording and Laya's calibration (`laya.calibrate`) and fine-tuning (`laya train`) tools, and fall back to `llm_fallback` per question where it misses its target.
 
-### 23.3 How it fits
+### 23.2b Caller-understanding comparison (2026-10-19) — Laya replaced by nano
 
-- `decisions/laya_client.py` implements the `DecisionModel` protocol: one `POST /v1/systemone` per turn carrying all questions from §20.2, returning `{answer, confidence, latency_ms}` per question, with `DECISION_TIMEOUT_MS`.
-- Results are logged to `call_signals` with `model = laya-<checkpoint>@0.4.7`, so Laya and `llm_fallback` can be compared from the same table.
-- Inside the agent, per-turn signals are fired without awaiting; the confirmation gate is awaited with the timeout inside `book_test_ride`, and fails safe to a re-confirmation.
+48 sentences (8 caller needs × 6 languages, written as Sarvam codemix transcribes them: native script plus English words), 6 questions each (intent, use, rider, priority, timeline, finance). Share of labelled answers right:
 
-### 23.4 Comparison plan (Phase 7)
+| Provider | en | hi | ta | te | ml | kn | Latency |
+|---|---|---|---|---|---|---|---|
+| Laya `multilingual` (local GPU) | 85 % | 67 % | 67 % | 74 % | 67 % | 78 % | 28 ms |
+| Laya `english` | 78 % | 52 % | 41 % | 48 % | 52 % | 44 % | – |
+| Azure gpt-5.4-nano, JSON schema | 100 % | 100 % | 96 % | 100 % | 100 % | 100 % | p50 1.3 s |
+| Azure gpt-5.4-mini, JSON schema | 96 % | 96 % | 100 % | 96 % | 96 % | 96 % | p50 1.9 s |
 
-Run Laya (`multilingual`, and `english` on English turns) and `llm_fallback` over the §20.5 labelled set.
+- **Laya's misses include English basics:** "my mother" was answered as `child`.
+- **Translating first would not help.** Laya reaches only 85 % on clean English, and a translation needs an LLM call that can classify directly.
+- **nano's latency is acceptable** because signals run in parallel and apply from the next turn.
+- **Most of the remaining nano/mini misses were a labelling flaw:** "easy to handle and good mileage" names two priorities, so `priorities` is now a multi-choice field.
+- **Decision (product owner, 2026-10-19):** nano is the signal provider. Laya stays optional, and could later be trained on nano's labels (`laya train`).
+- **Probe scripts:** kept out of the repo; they become `evals/signals_labelled.py` in Phase 7 step 2.
 
-| Metric | Measured per provider |
-|---|---|
-| Confirmation gate false accepts (target 0) | ✓ |
-| Unnecessary re-confirmations (target ≤ 10 %) | ✓ |
-| Intent accuracy per language | ✓ |
-| Calibration (confidence vs. actual accuracy) | ✓ |
-| p50 / p90 latency on the local GPU (and on CPU) | ✓ |
+### 23.3 If Laya is used again
 
-Enable `enforce` only for questions where Laya meets its target; others stay in `shadow` or use `llm_fallback`. Record the decision and numbers here.
+`decisions/laya_client.py` implements the same `SignalProvider` protocol as nano: one `POST /v1/systemone` per turn carrying the §20.2 questions, with a timeout. Results go to `call_signals` with `provider = laya-<checkpoint>@0.4.7`, so the two providers can be compared from the same table. Switch `SIGNAL_PROVIDER=laya` only if it matches nano on the §20.8 labelled set.
 
 ---
 

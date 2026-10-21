@@ -16,9 +16,9 @@
       # one fact only: offering mileage or price as a follow-up is fine, stating them isn't
       expect: {says_any: ["mm", "millimetre", "millimeter"], says_none: ["kilometre per litre", "rupees"]}
 
-- name: "misc: upcoming model can't be test-ridden (English)"
+- name: "misc: pre-booking model can't be test-ridden (English)"
   turns:
-    - say: "I want to book a test ride for the Rebel 500"
+    - say: "I want to book a test ride for the XR300L"
       expect: {no_tools: [check_slots, book_test_ride], says_any: ["call", "callback", "launch"]}
   expect:
     booked: 0
@@ -29,10 +29,12 @@
     - say: "No, I don't have a licence yet"
       expect: {no_tools: [confirm_details, book_test_ride]}
     - say: "Sure, call me back. I'm Ramesh, 9000016161"
+    - say: "Yes, that's right"  # the consent read-back (step 7.4)
   expect:
     booked: 0
     tools: [capture_lead]
     leads: 1
+    consented_customers: 1
 
 - name: "misc: price question during booking goes back to sales (English)"
   turns:

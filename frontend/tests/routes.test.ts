@@ -117,3 +117,38 @@ describe('data routes', () => {
     expect(await res.json()).toEqual({ bookings: [] });
   });
 });
+
+describe('leads and caller profile routes (SPEC §20.5)', () => {
+  const room = 'honda-0b6f5a7e-2c1d-4e8f-9a3b-5c6d7e8f9a0b';
+  it('require a session', async () => {
+    const leads = await import('@/app/api/leads/route');
+    const csv = await import('@/app/api/leads/export/route');
+    const profile = await import('@/app/api/profile/route');
+    expect((await leads.GET()).status).toBe(401);
+    expect((await csv.GET()).status).toBe(401);
+    expect((await profile.GET(new Request(`http://x/api/profile?room=${room}`))).status).toBe(401);
+  });
+  it('serve masked leads as JSON and as a CSV download', async () => {
+    auth.signedIn = true;
+    const leads = await import('@/app/api/leads/route');
+    expect(await (await leads.GET()).json()).toEqual({ leads: [] });
+    const { GET } = await import('@/app/api/leads/export/route');
+    const res = await GET();
+    expect(res.headers.get('content-type')).toMatch(/^text\/csv/);
+    expect(res.headers.get('content-disposition')).toMatch(/^attachment; filename="honda-leads-/);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const header = (await res.text()).split('\r\n')[0];
+    expect(header).toContain('phone_masked');
+    expect(header).not.toMatch(/customer_phone|,phone,/); // only the masked number exists here
+  });
+  it('accept only token-route room names for the profile', async () => {
+    auth.signedIn = true;
+    const { GET } = await import('@/app/api/profile/route');
+    for (const bad of ['', 'someone', "honda-x' or '1'='1", `${room}/../x`]) {
+      const res = await GET(new Request(`http://x/api/profile?room=${encodeURIComponent(bad)}`));
+      expect(res.status).toBe(400);
+    }
+    const ok = await GET(new Request(`http://x/api/profile?room=${room}`));
+    expect(await ok.json()).toEqual({ profile: null });
+  });
+});

@@ -11,8 +11,8 @@ TOPICS: dict[str, tuple[str, ...]] = {
     "servicing or repairs": ("service", "servicing", "serviced", "repair", "repairs", "mechanic",
                              "spare parts", "sarvice", "சர்வீஸ்", "సర్వీస్", "സർവീസ്", "ಸರ್ವಿಸ್", "सर्विस"),
     "insurance renewal or claims": ("insurance renewal", "renew", "renewal", "claim", "insurance claim"),
-    "finance or EMI": ("emi", "loan", "finance", "financing", "down payment"),
 }  # fmt: skip
+# Finance/EMI left the list in Phase 7 step 3: demo EMI examples come from emi_examples (SPEC §20.4).
 _NON_WORD = re.compile(r"[^\w]+")
 
 

@@ -36,7 +36,7 @@ async def test_seed_counts_and_idempotent(conn):
     counts = await seed(conn, rows)
     assert counts == {
         "showrooms": 1, "bikes": 33, "bike_variants": 57,
-        "bike_aliases": len(rows.aliases), "bike_on_road_prices": 54,
+        "bike_aliases": len(rows.aliases), "bike_on_road_prices": 60, "bike_fit": 33, "finance_schemes": 3,
     }  # fmt: skip
     before = await conn.fetchval(FINGERPRINT)
     await seed(conn, build_rows())
@@ -51,11 +51,11 @@ async def test_seeded_values(conn):
     ev = await conn.fetchrow(
         "select engine_cc, range_km, price_min_inr from public.bikes where id = 'activa-e'"
     )
-    assert ev["engine_cc"] is None and ev["range_km"] == 102 and ev["price_min_inr"] == 118000
+    assert ev["engine_cc"] is None and ev["range_km"] == 102 and ev["price_min_inr"] == 120133
     assert await conn.fetchval("select count(*) from public.bikes where not price_available") == 0
     assert (
         await conn.fetchval("select count(*) from public.bike_on_road_prices where needs_review is not null")
-        == 2
+        == 1  # QC3's "+30,000 subsidy" row; the CB350 H'ness one was replaced by a sourced row (2026-10-20)
     )
     show = await conn.fetchrow(
         "select city, open_time, close_time from public.showrooms where id = 'demo-showroom'"
