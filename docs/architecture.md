@@ -1,10 +1,35 @@
 # Architecture: Honda 2-Wheeler Multilingual Voice Agent (POC)
 
-A caller talks to a voice agent in the browser, in Tamil, English, Hindi (Hinglish), Telugu, Malayalam or Kannada. The agent answers questions about Honda two-wheelers, checks showroom hours, and books or cancels test rides. This document describes what runs where, which models are used, and how a call flows through the system. Detailed decisions, measurements and history are in [SPEC.md](SPEC.md); this file is the overview.
+A caller talks to a voice agent in the browser, in Tamil, English, Hindi (Hinglish), Telugu, Malayalam or Kannada. The agent answers questions about Honda two-wheelers, suggests models for the caller's needs, gives demo EMI examples, checks showroom hours, books or cancels test rides, and records callback requests as scored leads. This document describes what runs where, which models are used, and how a call flows through the system. Detailed decisions, measurements and history are in [SPEC.md](SPEC.md); this file is the overview.
 
-Each diagram appears twice: as plain text, and as draw.io XML. To edit a diagram, open the matching file in [`diagrams/`](diagrams/) with [diagrams.net](https://app.diagrams.net) (File → Open), or paste the XML block into draw.io via Extras → Edit Diagram.
+Diagrams are written in [Mermaid](https://mermaid.js.org), which GitHub, GitLab and VS Code (with a Mermaid preview extension) draw directly from the text. Diagrams 1–5 and 12 also have a draw.io version, drawn for Phases 0–6, in [`diagrams/`](diagrams/) (open with [diagrams.net](https://app.diagrams.net), File → Open). Where they differ, the Mermaid diagram is current.
 
-Status: Phases 0–5 built (as of 2026-10-16); Phase 7 (sales advisor and leads), Phase 8 (LangGraph) and Phases 10–11 (self-hosted LiveKit and Postgres) are planned.
+Status (2026-10-21): Phases 0–7 built (Phase 6 waits on four live demo runs, Phase 7 on a live check of its latency). Phase 8 (LangGraph) and Phases 10–11 (self-hosted LiveKit and Postgres) are planned.
+
+---
+
+## Use cases
+
+What the demo can show today. [DEMO.md](DEMO.md) has the lines to say for each, and the scripted conversations in `evals/scenarios/` prove them before every demo.
+
+| # | Use case | What the caller does | What the system shows | Built from |
+|---|---|---|---|---|
+| U1 | **Choose a language** | Picks one of six languages, or switches mid-call ("Hindi mein baat karo") | Replies in that language; "ok" never flips it; a background voice doesn't either | Language rule (code), BVC filter |
+| U2 | **Model, price and spec questions** | "Activa 125 விலை என்ன?", "mileage of the Shine 100?" | Ex-showroom range, Delhi on-road breakdown, mileage, colours, features | `find_bike`, catalog, price formatter |
+| U3 | **List by budget or segment** | "Scooters under 90,000?" | Up to 4 models, cheapest first | `list_bikes` |
+| U4 | **Compare two Hondas** | "Compare the Unicorn and the SP160" | Side-by-side engine, mileage, price | `compare_bikes` |
+| U5 | **Competitor question** | "Is the TVS Jupiter better than the Activa?" | No claim about the other brand; a Honda strength instead | Competitor pivot (code) |
+| U6 | **Find the right bike for a need** | "Scooter for my mother, easy to handle, good mileage" | Two suggestions with one reason each; the Caller profile card fills in | `recommend_bikes`, nano signals |
+| U7 | **Price objection and EMI** | "Too costly. Can I pay in EMI?" | A demo EMI from code, "example only" | `emi_examples`, advisor move |
+| U8 | **Showroom hours** | "Open on Sunday at 6 pm?" | Opening times for that day | `check_showroom_open` |
+| U9 | **Book a test ride** | "Test ride of the Activa 125 tomorrow at 4 pm" | Slot check, licence question, one read-back, booking code; Bookings panel and calendar update | BookingAgent, booking guard, `reserve_slot` |
+| U10 | **Slot taken, or a correction** | Picks a busy slot, or "no, the number is wrong" | Two nearest free times, or a new read-back | Slot search, guard |
+| U11 | **Cancel a booking** | Gives the code and the number | Cancelled; the calendar event is removed | `cancel_test_ride` |
+| U12 | **No licence, or a model not on sale** | "I don't have a licence", or asks for the XR300L | No booking; a callback is offered instead | Guard, `capture_lead` |
+| U13 | **Callback with consent** | "Can the showroom call me?" + name, number, "yes" | Number read back; consent stored; a scored lead with a summary in the Leads tab; CSV export | `capture_lead`, `customers`, lead score |
+| U14 | **Browsing or frustrated caller** | "Just looking", or "I want a real person" | No pushing; or a callback offer with no more questions | Advisor moves |
+| U15 | **Out of scope** | "When should my Activa be serviced?" | A polite line and a callback offer | Scope rule (code) |
+| U16 | **Slow turn** | Any question that takes more than 2 s | "One moment please, let me check." finishes, then the reply | Hold line |
 
 ---
 
@@ -12,36 +37,45 @@ Status: Phases 0–5 built (as of 2026-10-16); Phase 7 (sales advisor and leads)
 
 | Component | Where it runs | What it does |
 |---|---|---|
-| **Browser app** | Caller's device | Next.js page built from LiveKit's `agent-starter-react` template: passcode screen and privacy notice, call controls, live transcript, bookings and models panels. Talks to the Next.js server over HTTPS and to LiveKit Cloud over WebRTC. |
-| **Next.js server** | Developer machine (`frontend/`) | Sign-in (`/api/login`), call tokens (`/api/token`), read-only data for the panels (`/api/bookings`, `/api/catalog`). Holds the LiveKit API secret and the read-only database password; neither reaches the browser. |
-| **Agent worker** | Developer machine (`src/honda_voice/`, Python 3.11, LiveKit Agents 1.8.8) | The voice agent itself: one process per call, running the speech pipeline, the two agents (Sales, Booking), their tools, the booking guard, the hold audio and the metrics. Connects out to LiveKit Cloud, Sarvam, Azure, Supabase and Google. |
-| **LiveKit Cloud** | LiveKit's hosted service | Media server (relays the caller's and agent's audio), signalling, NAT traversal (TURN), agent dispatch (sends each new call to a free worker), and two hosted ML models used in the turn-taking (§3). |
+| **Browser app** | Caller's device | Next.js page built from LiveKit's `agent-starter-react` template: passcode screen and privacy notice, call controls, live transcript, and a side panel with **Bookings**, **Models** and **Leads** tabs plus a live **Caller profile** card during a call. Talks to the Next.js server over HTTPS and to LiveKit Cloud over WebRTC. |
+| **Next.js server** | Developer machine (`frontend/`) | Sign-in (`/api/login`), call tokens (`/api/token`), read-only data for the panels (`/api/bookings`, `/api/catalog`, `/api/leads`, `/api/leads/export` (CSV), `/api/profile?room=`). Holds the LiveKit API secret and the read-only database password; neither reaches the browser. |
+| **Agent worker** | Developer machine (`src/honda_voice/`, Python 3.11, LiveKit Agents 1.8.8) | The voice agent itself: one process per call, running the speech pipeline (with the BVC background-voice filter), the two agents (Sales, Booking), their tools, the booking guard, the hold line, the **sales advisor** (caller signals, suggested moves, end-of-call summary and lead score) and the metrics. Connects out to LiveKit Cloud, Sarvam, Azure, Supabase and Google. |
+| **LiveKit Cloud** | LiveKit's hosted service | Media server (relays the caller's and agent's audio), signalling, NAT traversal (TURN), agent dispatch (sends each new call to a free worker), two hosted ML models used in the turn-taking (§3), and the licence for the BVC voice-isolation filter. |
 | **Sarvam AI** | Sarvam's API | Speech-to-text (streaming) and text-to-speech for all six languages. |
-| **Azure OpenAI** | Azure, South India region | The LLM that decides what to say and which tool to call. |
-| **Supabase Postgres** | Supabase, Mumbai (ap-south-1) | Source of truth: catalog, showroom hours, test-ride slots, bookings, leads. |
+| **Azure OpenAI** | Azure, South India region | `gpt-5.4-mini` decides what to say and which tool to call; `gpt-5.4-nano` reads caller signals in the background, writes the after-call summary, and is the fallback LLM. |
+| **Supabase Postgres** | Supabase, Mumbai (ap-south-1) | Source of truth: catalog (with fit tags and demo finance schemes), showroom hours, test-ride slots, bookings, calls, caller profiles, leads and the customer list. |
 | **Google Calendar** | Google | Write-only copy of bookings for showroom staff (masked phone). A failure here never affects a booking. |
-| **Laya** (optional) | Developer machine GPU, `127.0.0.1:8100` | Optional signal provider; replaced by gpt-5.4-nano for caller understanding (SPEC §23.2b). Not in the call path. |
+| **Laya** (optional) | Developer machine GPU, `127.0.0.1:8100` | Optional signal provider (`SIGNAL_PROVIDER=laya`); replaced by gpt-5.4-nano for caller understanding (SPEC §23.2b). Off by default. |
 
 ### Diagram 1: System context
 
-```text
-                         ┌─────────────────────────── LiveKit Cloud ───────────────────────────┐
-  Caller's browser       │ media server (SFU) + signalling + TURN · agent dispatch             │
-  ┌───────────────┐      │ hosted models: turn detector, adaptive interruption                  │
-  │ Next.js page  │◀────▶│                                                                      │
-  │ mic, speaker, │WebRTC└──────────────────────────────▲───────────────────────────────────────┘
-  │ transcript,   │ audio                               │ WebSocket signalling + WebRTC media,
-  │ panels        │                                     │ job dispatch, inference
-  └──────┬────────┘                                     │
-         │ HTTPS (passcode, token, panels)   ┌──────────┴──────────────────────────┐
-  ┌──────▼─────────────────┐                 │ Agent worker (Python)                │──▶ Sarvam: STT saaras:v4 /
-  │ Next.js server         │                 │ SalesAgent ⇄ BookingAgent            │    TTS bulbul:v4-flash (WebSocket)
-  │ /api/login /api/token  │                 │ CallState, booking guard, tools      │──▶ Azure OpenAI gpt-5.4-mini (HTTPS)
-  │ /api/bookings /catalog │                 │ hold audio, metrics, logs/           │──▶ Google Calendar (HTTPS, background)
-  └──────┬─────────────────┘                 └──────────┬──────────────────────────┘
-         │ TLS, read-only role                          │ TLS, backend role
-         └──────────────────▶ Supabase Postgres ◀───────┘
-                              catalog · slots · bookings · leads
+```mermaid
+flowchart LR
+  subgraph Device["Caller's device"]
+    B["Browser: Next.js page<br/>mic, speaker, transcript<br/>Bookings · Models · Leads · Caller profile"]
+  end
+  subgraph Dev["Developer machine"]
+    N["Next.js server<br/>/api/login · /api/token<br/>/api/bookings · /api/catalog<br/>/api/leads · /api/profile"]
+    W["Agent worker (Python)<br/>SalesAgent ⇄ BookingAgent<br/>CallState · booking guard · tools<br/>Advisor · hold line · BVC · metrics"]
+    LOG[("logs/turns.jsonl<br/>logs/worker.log")]
+    LAYA["Laya server :8100<br/>optional, off"]
+  end
+  LK["LiveKit Cloud<br/>SFU · signalling · TURN · dispatch<br/>turn detector · adaptive interruption"]
+  S["Sarvam AI<br/>STT saaras:v4<br/>TTS bulbul:v4-flash"]
+  A["Azure OpenAI<br/>gpt-5.4-mini: replies, tools<br/>gpt-5.4-nano: signals, summary, fallback"]
+  DB[("Supabase Postgres<br/>catalog · slots · bookings<br/>calls · profiles · leads · customers")]
+  G["Google Calendar<br/>masked copy of bookings"]
+
+  B <-->|"WebRTC audio + transcript"| LK
+  B -->|"HTTPS: passcode, token, panels"| N
+  W <-->|"signalling, media, jobs, inference"| LK
+  W -->|"WebSocket: audio in, speech out"| S
+  W -->|"HTTPS streaming"| A
+  W -->|"asyncpg, TLS verified, backend role"| DB
+  N -->|"pg, TLS verified, read-only masked views"| DB
+  W -.->|"background, after commit"| G
+  W -.-> LOG
+  W -.->|"SIGNAL_PROVIDER=laya"| LAYA
 ```
 
 <details>
@@ -149,9 +183,9 @@ The server does the hard real-time networking:
   - **adaptive interruption**, which tells a real interruption from a backchannel ("hmm", "ok") while the agent speaks.
 - Operations we'd otherwise run ourselves: TLS certificates, public TURN servers, scaling, monitoring, and a free tier that's enough for a POC.
 
-**Why Cloud for now:** it removed all networking infrastructure from the critical path while voice quality and latency were the risk (Phase 1), and the multilingual turn detector exists only there. **Phase 10** moves the media server to Docker on our own machine (only `LIVEKIT_URL` and keys change). At that point turn detection for Tamil, Telugu, Malayalam and Kannada falls back to silence-based detection (or another detector), unless we keep using the cloud inference gateway separately; that trade-off is part of Phase 10.
+**Why Cloud for now:** it removed all networking infrastructure from the critical path while voice quality and latency were the risk (Phase 1), and the multilingual turn detector exists only there. **Phase 10** moves the media server to Docker on our own machine (only `LIVEKIT_URL` and keys change). At that point turn detection for Tamil, Telugu, Malayalam and Kannada falls back to silence-based detection (or another detector), unless we keep using the cloud inference gateway separately; that trade-off is part of Phase 10. The BVC background-voice filter is licensed through LiveKit Cloud too, so Phase 10 must replace it (or fall back to `NOISE_CANCELLATION=off`).
 
-What crosses the internet in each case: caller audio goes browser → LiveKit → worker → Sarvam (STT); text goes worker → Azure; speech goes Sarvam → worker → LiveKit → browser. The 2026-10-16 hang was the worker's connection to LiveKit Cloud dropping ("ping timeout") just after an Azure request stalled; see §8.
+What crosses the internet in each case: caller audio goes browser → LiveKit → worker → Sarvam (STT); text goes worker → Azure; speech goes Sarvam → worker → LiveKit → browser. The 2026-10-16 hang was the worker's connection to LiveKit Cloud dropping ("ping timeout") just after an Azure request stalled; see §10.
 
 ---
 
@@ -166,9 +200,11 @@ What crosses the internet in each case: caller audio goes browser → LiveKit �
 | **Voice activity detection** | Silero VAD | Local (in the worker) | Detects when someone is speaking |
 | **End-of-turn detection** | LiveKit turn detector (cloud, multilingual) | LiveKit Cloud inference | Endpointing 0.3–1.5 s |
 | **Interruption detection** | LiveKit adaptive interruption | LiveKit Cloud inference | Default "auto" mode; minimum 0.5 s of speech to interrupt |
-| Caller signals (Phase 7, planned) | gpt-5.4-nano (Azure) | Cloud API, in parallel | Builds the caller profile for the sales advisor; never decides prices, EMIs, dates, slots or phone validity |
+| **Background-voice filter** | LiveKit BVC (`NOISE_CANCELLATION=bvc`) | In the worker, licensed by LiveKit Cloud | Removes other people's voices and noise from the caller's audio before STT and turn detection; `nc` = noise only (free), `off` |
+| **Caller signals** (Phase 7) | `gpt-5.4-nano` | Azure (deployment `voice-gpt-5.4-nano`) | Strict JSON schema, `reasoning_effort=minimal`, 8 s timeout, runs in the background after each caller turn; builds the caller profile. 96–99 % per language on 150 labelled turns (Laya: 49–57 %) |
+| **After-call summary** (Phase 7) | `gpt-5.4-nano` | Azure, after the call ends | 2–3 English sentences for whoever calls back; names, numbers and codes scrubbed in code |
 
-Everything that must be exact is done in code, not by a model: spoken prices (`domain/pricing.py`), dates and slots (`domain/datetime_resolve.py`), phone validation, the session language, competitor pivots, out-of-scope detection, and whether a booking is allowed (`domain/booking_guard.py`).
+Everything that must be exact is done in code, not by a model: spoken prices (`domain/pricing.py`), EMI examples (`domain/finance.py`), bike recommendations (`domain/recommend.py`), the next suggested move (`domain/advisor.py`), the lead score (`domain/lead_score.py`), dates and slots (`domain/datetime_resolve.py`), phone validation, the session language, competitor pivots, out-of-scope detection, and whether a booking is allowed (`domain/booking_guard.py`). The signal model only gives judgments ("rider: parent", "timeline: this month"); it never decides prices, EMIs, dates, slots or phone validity, and never blocks a booking.
 
 ---
 
@@ -178,21 +214,38 @@ Everything that must be exact is done in code, not by a model: spoken prices (`d
 2. The caller presses **Start call**. The browser asks `POST /api/token`. The server checks the cookie (10 tokens a minute per IP), **ignores the request body**, and signs a LiveKit token locally with the API secret: a new random room (`honda-<uuid>`), a random caller identity, microphone only, no data messages, valid 10 minutes to join, and a room configuration that dispatches the agent `honda-sales`.
 3. The browser joins the room on LiveKit Cloud over WebRTC.
 4. LiveKit dispatches a job to a registered worker with spare capacity.
-5. The worker builds the session (VAD, STT, LLM, TTS, turn detector), the shared call state, and loads the catalog in the background.
+5. The worker builds the session (VAD, BVC filter, STT, LLM, TTS, turn detector) and the shared call state, loads the catalog in the background, and starts the sales advisor, which creates the call's `calls` row in the background.
 6. The agent plays the Tamil greeting from fixed text ("which language shall we speak?"), with no LLM wait, and warms the LLM connection in parallel. The 10-minute call limit starts, and the hold line for the greeting language is prepared.
+7. While the call runs, the side panel's Caller profile card polls `/api/profile?room=` every 3 s.
 
 ### Diagram 2: Call setup
 
-```text
- Caller                Next.js server                   LiveKit Cloud               Agent worker
-   │ passcode ───────────▶ /api/login: check, cookie
-   │ Start call ─────────▶ /api/token: cookie, rate limit,
-   │                       sign token (room, mic only,
-   │ ◀──────── token ───── dispatch honda-sales)
-   │ join room (WebRTC) ─────────────────────────────▶ room created
-   │                                                   dispatch job ───────────▶ entrypoint: session,
-   │                                                                             CallState, catalog
-   │ ◀──────────────────────── Tamil greeting (fixed text, TTS) ───────────────── + LLM warm-up
+```mermaid
+sequenceDiagram
+  autonumber
+  actor C as Caller (browser)
+  participant N as Next.js server
+  participant LK as LiveKit Cloud
+  participant W as Agent worker
+  participant DB as Postgres
+  C->>N: POST /api/login (passcode)
+  N-->>C: hv_session cookie (HttpOnly, SameSite=Strict, 2 h)
+  C->>N: POST /api/token (body ignored)
+  N-->>C: token: room honda-uuid, mic only, 10 min, dispatch honda-sales
+  C->>LK: join room (WebRTC)
+  LK->>W: dispatch job
+  W->>W: AgentSession (VAD, BVC, STT, LLM, TTS, turn detector) and CallState
+  par background, nothing awaited before the greeting
+    W->>DB: load the catalog
+    W->>DB: insert the calls row (advisor)
+    W->>W: warm the LLM, prepare the hold line
+  end
+  W-->>C: Tamil greeting (fixed text, TTS)
+  loop every 3 s during the call
+    C->>N: GET /api/profile?room=
+    N->>DB: frontend.caller_profiles (masked view)
+    N-->>C: Caller profile card
+  end
 ```
 
 <details>
@@ -268,32 +321,41 @@ Everything that must be exact is done in code, not by a model: spoken prices (`d
 
 ## 5. Workflow: one voice turn
 
-1. **Listening.** The browser streams microphone audio to LiveKit; the worker receives it. Silero VAD marks speech; Sarvam `saaras:v4` transcribes while the caller talks (interim text) and reports the detected language.
+1. **Listening.** The browser streams microphone audio to LiveKit; the worker receives it. The BVC filter removes background voices and noise; Silero VAD marks speech; Sarvam `saaras:v4` transcribes while the caller talks (interim text) and reports the detected language.
 2. **End of turn.** LiveKit's turn detector decides the caller has finished (typically ~0.6 s after they stop). To save time, the LLM is already started on the draft transcript (preemptive generation) and TTS is allowed to start early too.
-3. **Language (code).** The session language changes only on an explicit request ("Telugu lo cheppandi") or a confident detection on a turn of at least 3 words, so "ok" never flips a Tamil call to English (SPEC §4.1).
+3. **Language (code).** The session language changes on an explicit request ("Telugu lo cheppandi"), or on a turn of at least 3 words in another language: the transcript's native script decides, else STT's confident detection (script outranks STT's tag, which once called a Tamil-script turn Hindi). So "ok" never flips a Tamil call to English (SPEC §4.1).
 4. **Reply from code, if possible.** On the caller's first turn, a bare language pick ("Tamil", "English please") gets the intro line straight from code, with no LLM call.
-5. **Context for the LLM.** Code adds, for this turn only: facts for any model the caller named (pre-fetched, so most product answers need one LLM call, not two), a competitor pivot to the closest Honda, an out-of-scope note, and, last, the language tag (booking turns also get the current IST time and booking progress).
-6. **LLM.** `gpt-5.4-mini` streams its reply, or calls a tool. Tools take typed arguments and run code or parameterised SQL; the LLM never writes SQL. Prices are spoken only from tool output.
+5. **Context for the LLM.** Code adds, for this turn only: facts for any model the caller named (pre-fetched, so most product answers need one LLM call, not two), a competitor pivot to the closest Honda, an out-of-scope note, the sales advisor's suggested move for this turn (at most one, §7), and, last, the language tag (booking turns also get the current IST time and booking progress).
+6. **LLM.** `gpt-5.4-mini` streams its reply, or calls a tool. Tools take typed arguments and run code or parameterised SQL; the LLM never writes SQL. Prices and EMIs are spoken only from tool output. Fixed lines (the booking read-back, the booked line, the callback-consent read-back) are spoken straight from the tool's output without a second LLM call.
 7. **Speech.** The reply streams through `tts_node`: markdown and emoji are stripped, raw ₹ amounts are rewritten by the price formatter, units are expanded, and any echoed internal tag is dropped. Then Sarvam `bulbul:v4-flash` speaks it in the session language.
-8. **Slow turns.** If the agent is still thinking after 2 s (slow tool, slow LLM), a short line ("One moment please, let me check.") plays on a separate audio track and the agent carries on; the reply follows when ready (hold music was tried and removed).
-9. **Metrics.** Each turn writes one line to `logs/turns.jsonl` (time to first audio, STT, LLM time to first token, TTS first byte, tools, words, guardrail violations); the worker log goes to `logs/worker.log` during development.
+8. **Slow turns.** If the agent is still thinking after 2 s (slow tool, slow LLM), a short line ("One moment please, let me check.") plays on a separate audio track. Once started, it finishes before the reply plays (at most 4 s; the reply is synthesised meanwhile), and it stops at once if the caller speaks. Hold music was tried and removed.
+9. **Caller signals (background).** When the caller's message is committed, the advisor asks `gpt-5.4-nano` about it in parallel (§7). Nothing on the reply path waits for it.
+10. **Metrics.** Each turn writes one line to `logs/turns.jsonl` (time to first audio, STT, LLM time to first token, TTS first byte, tools, words, guardrail violations); the worker log goes to `logs/worker.log` during development.
 
 Typical timings (2026-10-16 console and browser calls): end of turn ~0.58 s, LLM first token 0.8–1.0 s, TTS first audio 0.2–0.3 s; **caller hears the reply ~1.5 s after they stop** (target: median ≤ 2.0 s, 90th percentile ≤ 3.0 s).
 
 ### Diagram 3: Voice turn
 
-```text
- mic ─▶ Silero VAD ─▶ Sarvam STT (stream) ─▶ LiveKit turn detector ─▶ language rule (code)
-                                                                          │
-                              ┌── first turn is a language pick? ── yes ─┴─▶ intro line (code) ─┐
-                              no                                                               │
-                              ▼                                                                │
-     pre-fetch facts, competitor / scope notes, language tag (code)                            │
-                              ▼                                                                │
-     Azure gpt-5.4-mini (stream) ⇄ tools (code + parameterised SQL)                            │
-                              ▼                                                                │
-     tts_node streaming cleanup ─▶ Sarvam TTS (session language) ─▶ caller hears it ◀───────────┘
-     (after 2 s of thinking: hold line "One moment please, let me check." on a separate track)
+```mermaid
+flowchart TD
+  MIC["Caller speaks"] --> BVC["BVC filter<br/>background voices removed"]
+  BVC --> VAD["Silero VAD"]
+  VAD --> STT["Sarvam STT, streaming<br/>interim text + detected language"]
+  STT --> EOU["LiveKit turn detector<br/>end of turn ~0.6 s"]
+  EOU --> LANG["Language rule (code)<br/>explicit ask, else ≥ 3 words:<br/>native script, then STT tag"]
+  LANG --> FIX{"First turn is only<br/>a language pick?"}
+  FIX -->|yes| INTRO["Intro line from code"]
+  FIX -->|no| CTX["Turn context (code)<br/>model facts · competitor pivot · scope note<br/>advisor move · language tag last"]
+  CTX --> LLM["gpt-5.4-mini, streaming"]
+  LLM <-->|"typed tools"| TOOLS["Tools: code + parameterised SQL"]
+  LLM --> CLEAN["tts_node: streaming cleanup"]
+  CLEAN --> TTS["Sarvam TTS<br/>session language"]
+  INTRO --> TTS
+  TTS --> OUT["Caller hears the reply<br/>~1.5 s after they stop"]
+  LLM -.->|"still thinking after 2 s"| HOLD["Hold line on its own track<br/>finishes before the reply"]
+  HOLD -.-> OUT
+  EOU -.->|"committed caller message"| SIG["nano caller signals<br/>in parallel (Diagram 7)"]
+  SIG -.->|"next turn's move"| CTX
 ```
 
 <details>
@@ -400,9 +462,9 @@ Typical timings (2026-10-16 console and browser calls): end of turn ~0.58 s, LLM
 ## 6. Workflow: agents, handoff and booking
 
 Two agents share one call state:
-- **SalesAgent** answers model, price, spec, comparison and showroom-hours questions, and hands over to booking with `start_booking` (passing the model, day and time if the caller already said them).
-- **BookingAgent** runs the booking script and hands back with `back_to_sales` for other questions. The conversation history moves with each handoff.
-- **CallState** holds what must not depend on the LLM's memory: session language, caller turn count, chosen model, and the booking draft (slots actually offered, licence answer, validated phone numbers, the read-back, the caller's chosen time, booking codes made in this call).
+- **SalesAgent** is advisor-style: it answers model, price, spec, comparison and showroom-hours questions, suggests models for a need (`recommend_bikes`), gives demo EMI examples (`emi_examples`), takes callback requests (`capture_lead`), and hands over to booking with `start_booking` (passing the model, day and time if the caller already said them). There is no separate lead agent: callers move between needs and named models within seconds, and each handoff costs an extra LLM step.
+- **BookingAgent** runs the booking script and hands back with `back_to_sales` for other questions. The conversation history moves with each handoff. The advisor suggests nothing during booking.
+- **CallState** holds what must not depend on the LLM's memory: session language, caller turn count, chosen model, the booking draft (slots actually offered, licence answer, validated phone numbers, the read-back, the caller's chosen time, booking codes made in this call), the pending callback read-back (`lead_pending`), the call's outcomes, its `calls` row id and the advisor.
 
 **Booking script** (one question at a time):
 1. Model (pre-filled if known). Pre-booking and upcoming models can't be test-ridden: the agent offers a callback instead.
@@ -417,20 +479,24 @@ Two agents share one call state:
 
 ### Diagram 4: Agents and tools
 
-```text
-           CallState (one per call): language · turns · model · BookingDraft
-              ▲                                                        ▲
- ┌────────────┴─────────────────┐   start_booking    ┌───────────────┴───────────────────┐
- │ SalesAgent                   │ ─────────────────▶ │ BookingAgent                        │
- │ find_bike · list_bikes       │ ◀───────────────── │ check_slots · record_licence        │
- │ compare_bikes                │    back_to_sales   │ validate_phone · confirm_details    │
- │ check_showroom_open          │                    │ book_test_ride · cancel_test_ride   │
- │ capture_lead · start_booking │                    │ capture_lead · back_to_sales        │
- └──────────────────────────────┘                    └───────────────┬───────────────────┘
-                                                                     ▼ book_test_ride
-                                                     booking guard (code) ─▶ reserve_slot (Postgres)
-                                                                     ▼ after commit
-                                                     CalendarSync (background, 3 retries)
+```mermaid
+flowchart LR
+  subgraph SALES["SalesAgent (advisor style)"]
+    ST["find_bike · list_bikes · compare_bikes<br/>recommend_bikes · emi_examples<br/>check_showroom_open · capture_lead"]
+  end
+  subgraph BOOK["BookingAgent"]
+    BT["check_slots · record_licence · validate_phone<br/>confirm_details · book_test_ride<br/>cancel_test_ride · capture_lead"]
+  end
+  CS[("CallState, one per call<br/>language · turns · model · BookingDraft<br/>lead_pending · outcomes · call_id")]
+  ADV["Advisor<br/>one suggested move per turn"]
+  SALES -->|"start_booking (model, day, time)"| BOOK
+  BOOK -->|back_to_sales| SALES
+  SALES -.- CS
+  BOOK -.- CS
+  ADV -.->|"coach line"| SALES
+  BT -->|book_test_ride| GUARD{"Booking guard (code)"}
+  GUARD -->|allowed| RS[("reserve_slot<br/>Postgres, atomic")]
+  RS -.->|"after commit"| CAL["CalendarSync<br/>background, 3 retries"]
 ```
 
 <details>
@@ -492,23 +558,23 @@ Two agents share one call state:
 
 ### Diagram 5: Booking flow
 
-```text
- wants a ride ─▶ start_booking ─▶ on sale? ── no ─▶ offer callback (lead)
-                                     │ yes
-                                     ▼
-                     slot search (code) ─▶ licence? ── no ─▶ offer callback
-                                              │ yes
-                                              ▼
-                        name ─▶ phone (validate, 2 tries) ─▶ read-back (code)
-                                                                │
-                              correction ◀── caller answers ────┘
-                              (new read-back)      │ yes, next turn
-                                                   ▼
-                                 book_test_ride: guard + reserve_slot
-                                    │ slot just taken            │ booked
-                                    ▼                            ▼
-                         2 alternatives ─▶ read-back     code spoken, bring licence,
-                                                         calendar copy in background
+```mermaid
+flowchart TD
+  A["Caller wants a test ride"] --> B["start_booking<br/>model, day, time if given"]
+  B --> C{"Model on sale?"}
+  C -->|"no: pre-booking or upcoming"| L["Offer a callback<br/>capture_lead (Diagram 9)"]
+  C -->|yes| D["Slot search in code<br/>free capacity, IST grid"]
+  D --> E{"Valid driving licence?"}
+  E -->|no| L
+  E -->|yes| F["Name, then phone<br/>validate_phone, 2 tries"]
+  F --> G["Read-back built in code<br/>model, slot, name, 5+5 digits, licence"]
+  G --> H{"Caller's next turn"}
+  H -->|correction| G
+  H -->|yes| I["book_test_ride<br/>guard + reserve_slot"]
+  I --> J{"Slot just taken?"}
+  J -->|yes| K["Offer the 2 nearest free times"]
+  K --> G
+  J -->|no| M(["Booking code spoken H N D, …<br/>bring the licence<br/>calendar copy in background"])
 ```
 
 <details>
@@ -621,55 +687,244 @@ Two agents share one call state:
 
 ---
 
-## 7. Data
+## 7. Workflow: the sales advisor (Phase 7)
 
-Supabase Postgres (Mumbai) is the source of truth (migrations in `data/migrations/`):
+The advisor works out what the caller is looking for and steers the call toward a test ride or a callback, without adding any delay. **nano judges, code decides, the reply LLM speaks** (CLAUDE.md rule 12):
+
+1. **Signals, in the background.** Each committed caller message (a discarded preemptive draft never counts) starts one request to `gpt-5.4-nano` with the last 4 exchanges and the active agent. It answers fixed questions (SPEC §20.2) in a strict JSON schema: intent, use case, rider, priorities, budget as an amount (code maps it to a band), timeline, experience, payment interest, objection, frustration, purchase intent, wants a person. A timeout (8 s) or an error skips that turn and changes nothing.
+2. **Profile.** Answers above a confidence threshold merge into the call's `CallerProfile`; a later clear answer replaces an earlier one. Categories only: no transcript text, no sensitive inferences. Each turn's answers go to `call_signals`, the profile to `caller_profiles`, which the Caller profile card shows.
+3. **One move per turn, in code.** On the caller's next turn, `domain/advisor.py` picks at most one move from the profile (Diagram 8), and SalesAgent adds it to the turn context as a single line: "only after answering what the caller just asked; skip it if it doesn't fit". Each move is suggested once per call, discovery questions at most 4 times, nothing during booking, and nothing more to sell after a callback offer.
+4. **Same-turn needs.** For a need with no model named ("a scooter for my mother"), the reply LLM calls `recommend_bikes` with what it heard, so the first answer doesn't wait for the profile. Code ranks on-sale models from `bike_fit` and the catalog (use case, ease, mileage, electric, power, price, budget) and returns 2–3 with one verified reason each.
+5. **EMI.** `emi_examples` computes demo EMIs in code from the catalog price and the demo finance schemes, returned as spoken text and always called an example ("the showroom confirms the actual terms").
+
+`ADVISOR=on` (default) adds the moves; `shadow` records the signals without changing the call; `off` disables the advisor.
+
+### Diagram 7: Signals run beside the reply
+
+```mermaid
+sequenceDiagram
+  actor C as Caller
+  participant SA as SalesAgent (gpt-5.4-mini)
+  participant ADV as Advisor (worker)
+  participant NANO as gpt-5.4-nano
+  participant DB as Postgres
+  C->>SA: turn N (committed transcript)
+  par reply path, latency unchanged
+    SA->>SA: turn context + move from the profile so far
+    SA-->>C: reply, streamed to TTS
+  and signal path, background
+    ADV->>NANO: last 4 exchanges + active agent, strict JSON schema
+    NANO-->>ADV: answers with confidence (p50 ~1.2 s)
+    ADV->>ADV: merge into CallerProfile
+    ADV->>DB: call_signals rows, caller_profiles upsert
+  end
+  C->>SA: turn N+1
+  SA->>ADV: coach_line(turn N+1)
+  ADV->>ADV: next_move(profile) in code, once per turn
+  ADV-->>SA: one suggested move, or none
+  SA-->>C: answers the question first, then the move if it fits
+```
+
+### Diagram 8: Next-move rules (`domain/advisor.py`, first match wins)
+
+```mermaid
+flowchart TD
+  P["Caller profile + moves already made"] --> BK{"In a booking step?"}
+  BK -->|yes| NONE(["No move"])
+  BK -->|no| CB{"Wants a person,<br/>or frustration ≥ 4?"}
+  CB -->|yes| M1["Offer a callback,<br/>no questions, stop selling"]
+  CB -->|no| PO{"Price objection?"}
+  PO -->|yes| M2["Lowest variant price<br/>+ one EMI example"]
+  PO -->|no| EMI{"Asked about EMI?"}
+  EMI -->|yes| M3["One emi_examples example"]
+  EMI -->|no| EX{"Wants to exchange<br/>an old vehicle?"}
+  EX -->|yes| M4["Callback for an exchange quote<br/>no exchange values"]
+  EX -->|no| BR{"Just browsing?"}
+  BR -->|yes| M5["No push: answer, offer<br/>once to note the number"]
+  BR -->|no| SG{"Need known,<br/>no model yet?"}
+  SG -->|yes| M6["Suggest 2 models<br/>with recommend_bikes"]
+  SG -->|no| TR{"Purchase intent ≥ 4 or<br/>buying this week or month?"}
+  TR -->|yes| M7["Offer a test ride<br/>of the model discussed"]
+  TR -->|no| Q{"Fewer than 4<br/>questions asked?"}
+  Q -->|yes| M8["Ask one: use, rider,<br/>budget or timeline"]
+  Q -->|no| NONE
+```
+
+---
+
+## 8. Workflow: callback consent, leads and the end of the call
+
+**Callback consent (DPDP).** A callback is saved only with the caller's explicit consent to the number read back:
+1. The caller asks for a callback, or accepts one the agent offers (no licence, model not on sale, out of scope, exchange quote, frustration).
+2. `capture_lead` with a validated number doesn't save yet: it returns the consent line (`prompts.LEAD_CONSENT`), spoken straight from code: the number read back 5+5 and "may the showroom call you about this? We'll use the number only for this callback."
+3. Only a "yes" in a **later** caller turn, for the **same** number, saves it: the caller is upserted into `customers` (one row per number) with the consent, its time and the consent-text version, and the lead links to that customer and to the call. A "no" saves nothing.
+4. If the number fails validation twice, the lead is saved without consent and without a customer row, as before Phase 7.
+
+**At the end of the call** (in the worker's shutdown, after the caller has gone, so nobody waits):
+1. In-flight signals get up to 5 s to finish.
+2. `gpt-5.4-nano` writes a 2–3 sentence English summary for the person calling back. It refers to "the caller" only; code also scrubs digit runs, booking codes and known names.
+3. `domain/lead_score.py` scores the call from the profile and the outcome (below) and writes one next-action line ("Share current EMI and offers for Honda Activa 125").
+4. `calls.finish` records the outcome (info, booked, lead, cancelled, dropped), the languages and the summary; links this call's bookings and leads to customers (a booking is not a callback consent); and scores the leads. The Leads tab lists them hottest first, with a CSV export.
+
+| Lead score input | Points |
+|---|---|
+| Highest purchase intent (1–5) | (intent − 1) × 12, up to 48 |
+| Timeline | this week 25, this month 20, 1–3 months 15, browsing 0, unknown 5 |
+| Models discussed or suggested | 5 each, up to 10 |
+| Test ride booked | +20 |
+| Asked about EMI or exchange | +5 |
+| Frustration ≥ 4 | −10 |
+| **Band** | **hot ≥ 70, warm 40–69, cold < 40** |
+
+### Diagram 9: Callback consent
+
+```mermaid
+flowchart TD
+  A["Caller asks for a callback,<br/>or accepts one"] --> B{"Valid number yet?"}
+  B -->|"not yet"| ASK["Ask for the number<br/>validate_phone, 2 tries"]
+  ASK --> B
+  B -->|"2 failed tries"| NOC["Lead saved with no customer<br/>and no consent"]
+  B -->|yes| RB["capture_lead: consent line from code<br/>number read back 5+5<br/>may the showroom call you?"]
+  RB --> Y{"Caller's next turn"}
+  Y -->|"yes, same number"| SAVE["Upsert customers: consent, time, text version<br/>Insert lead linked to customer and call"]
+  Y -->|no| NOTHING(["Nothing saved"])
+  Y -->|"a different number"| RB
+```
+
+### Diagram 10: End of the call
+
+```mermaid
+sequenceDiagram
+  participant W as Worker shutdown
+  participant ADV as Advisor.close
+  participant NANO as gpt-5.4-nano
+  participant DB as Postgres
+  participant UI as Leads tab
+  W->>ADV: call ended, caller gone
+  ADV->>ADV: wait up to 5 s for in-flight signals
+  ADV->>NANO: transcript (last 40 messages)
+  NANO-->>ADV: 2–3 sentence summary
+  ADV->>ADV: scrub numbers, codes, names
+  ADV->>ADV: lead_score: value, band, next action
+  ADV->>DB: calls.finish: outcome, languages, summary
+  ADV->>DB: link bookings and leads to customers, score leads
+  UI->>DB: GET /api/leads via frontend.leads (masked, hottest first)
+```
+
+---
+
+## 9. Data
+
+Supabase Postgres (Mumbai) is the source of truth (migrations `001`–`005` in `data/migrations/`; every table has row-level security on):
 
 | Table / object | Contents |
 |---|---|
 | `showrooms` | Opening hours, closed weekdays, slot length (30 min) |
-| `bikes`, `bike_variants`, `bike_aliases`, `bike_on_road_prices` | 33 models from the hand-curated catalog; ex-showroom prices, Delhi on-road prices with breakdown, spoken-name aliases |
+| `bikes`, `bike_variants`, `bike_aliases`, `bike_on_road_prices` | 33 models from the hand-curated catalog, completed in Phase 7 from BikeDekho/BikeWale with sources: ex-showroom prices, Delhi on-road prices with breakdown, mileage, colours, features, spoken-name aliases. Estimated values are flagged and never spoken |
+| `bike_fit` | Per model: kerb weight, seat height, ease score 1–5, use cases, rider fit (used by `recommend_bikes`) |
+| `finance_schemes` | Three demo schemes (rate, tenures, down payment), marked `is_demo` |
 | `slots` | One row per model per 30-minute slot, capacity 2 (demo bikes) |
-| `bookings` | Reference (`HND-XXXXX`), slot, name, phone, language, licence confirmed, calendar sync status |
-| `leads` | Callback requests (no slot, no licence, upcoming model, phone failed, out of scope) |
+| `bookings` | Reference (`HND-XXXXX`), slot, name, phone, language, licence confirmed, calendar sync status, customer and call |
+| `customers` | The customer list: one row per phone number, callback consent with time and text version |
+| `calls` | One row per call: room, start and end, languages, outcome, summary, highest purchase intent, customer |
+| `caller_profiles` | The call's profile: use case, rider, priorities, budget band, timeline, experience, payment interest, objections, models discussed and suggested |
+| `call_signals` | Each turn's answers from the signal model, with confidence, provider and latency |
+| `leads` | Callback requests, with customer, call, score, band, status, next action and the model of interest |
 | `reserve_slot`, `cancel_booking` | Atomic Postgres functions (capacity check + insert in one transaction; 20 simultaneous attempts on a 1-bike slot give exactly 1 booking) |
-| `frontend.bookings`, `frontend.catalog` | Masked views for the website ("Ravi K.", "90xxx xx345"), the only things the read-only role can see |
+| `frontend.bookings`, `frontend.catalog`, `frontend.leads`, `frontend.caller_profiles` | Masked views for the website ("Ravi K.", "90xxx xx345"), the only things the read-only role can see |
 
 **Google Calendar** is a write-only copy: after a booking commits, a background task creates an event whose ID is derived from the booking code (so retries never duplicate). A failure marks the row `FAILED` and `scripts/retry_calendar_sync.py` catches up; the caller never hears about it.
 
+### Diagram 11: Data model
+
+```mermaid
+erDiagram
+  showrooms ||--o{ slots : "opens"
+  bikes ||--o{ bike_variants : "has"
+  bikes ||--o{ bike_aliases : "spoken as"
+  bikes ||--o{ bike_on_road_prices : "priced in Delhi"
+  bikes ||--o| bike_fit : "fit tags"
+  bikes ||--o{ slots : "demo bikes"
+  slots ||--o{ bookings : "reserved by"
+  customers ||--o{ bookings : "made"
+  customers ||--o{ leads : "asked for"
+  customers ||--o{ calls : "called"
+  calls ||--o| caller_profiles : "profile"
+  calls ||--o{ call_signals : "per turn"
+  calls ||--o{ leads : "produced"
+  calls ||--o{ bookings : "produced"
+  bikes ||--o{ leads : "interest"
+  finance_schemes {
+    text id
+    numeric interest_rate_pct
+    int_array tenure_months
+    bool is_demo
+  }
+  customers {
+    uuid id
+    text phone
+    bool callback_consent
+    timestamptz consent_at
+    text consent_text_version
+  }
+  calls {
+    bigint id
+    text room_name
+    text outcome
+    text summary
+    int max_purchase_intent
+  }
+  leads {
+    bigint id
+    text score
+    int score_value
+    text status
+    text next_action
+  }
+```
+
 ---
 
-## 8. Security, privacy and resilience
+## 10. Security, privacy and resilience
 
 **Security boundaries**
 - Secrets live only in git-ignored `.env` / `frontend/.env.local`; none reach the browser (checked by scanning the built bundle).
 - The browser gets a passcode-gated session, a one-room, microphone-only, 10-minute LiveKit token, and masked panel data.
-- The website reads the database through `frontend_reader`, a role that can only `SELECT` the two masked views, in read-only transactions, with 3 connections at most.
+- The website reads the database through `frontend_reader`, a role that can only `SELECT` the four masked views (bookings, catalog, leads, caller profiles), in read-only transactions, with 3 connections at most. `/api/profile` accepts only room names of the token route's form; the CSV export escapes cells that start with `= + - @` (spreadsheet formula injection).
 - The worker uses the backend role; every public table has row-level security on and Supabase's public API roles have no access; the booking functions can't be called through Supabase's API.
 - Both database connections use TLS **with certificate verification** against Supabase's root CA (`certs/`).
 - The LLM never sees credentials, never writes SQL, and can only call typed tools. Bookings pass a code guard (CLAUDE.md rule 6), not the LLM's judgment.
 
-**Privacy:** calls aren't recorded; phone numbers are masked in logs, the calendar and the website; a privacy notice is shown before the call. Processors: LiveKit (media relay), Sarvam (audio), Azure (text), Google (masked booking), Supabase (data).
+**Privacy:** calls aren't recorded; phone numbers are masked in logs, the calendar and the website; a privacy notice is shown before the call. The caller profile holds categories only (no transcript text, no sensitive inferences such as income, caste, religion or health); the call summary has no names, numbers or booking codes; a callback number is stored only with explicit consent, recorded with its time and wording version. Processors: LiveKit (media relay, voice filter), Sarvam (audio), Azure (text: replies, signals, summary), Google (masked booking), Supabase (data).
 
 **Resilience and cost limits**
 - A stalled LLM request (no bytes for 4 s) is retried quickly; with a fallback deployment configured, errors, rate-limit refusals and stalls switch the call to it, and the primary is used again once healthy.
 - Slow turns get a short hold line ("One moment please, let me check.") instead of silence.
+- The advisor is analytics and coaching only: a failed signal, summary or database write is logged and skipped, and never affects the call.
 - Each worker takes at most 3 calls at once; calls end after 10 minutes with a goodbye line; the website rate-limits sign-ins and tokens.
 
-### Diagram 6: Security boundaries
+### Diagram 12: Security boundaries
 
-```text
- Browser (public)  ── HTTPS + session cookie ─▶  Next.js server (LiveKit secret, session secret)
-   one-room mic-only token                          │ TLS, CA-verified
-   masked panel data                                ▼
-                                               frontend_reader: SELECT on 2 masked views, read-only
-
- Agent worker (.env secrets; LLM gets no credentials; code guard for bookings)
-   │ TLS, CA-verified
-   ▼
- postgres role: RLS on every table · API roles have no access · booking functions not callable via API
-
- Third parties: LiveKit (media) · Sarvam (audio) · Azure (text) · Google (masked booking)
+```mermaid
+flowchart LR
+  subgraph PUBLIC["Public: browser"]
+    BR["Passcode form · privacy notice<br/>one-room, mic-only, 10-min token<br/>masked panel data only"]
+  end
+  subgraph NEXT["Next.js server"]
+    NX["Secrets: LiveKit API secret, SESSION_SECRET,<br/>frontend_reader password<br/>rate limits · security headers · room-name check"]
+  end
+  subgraph WORKER["Agent worker"]
+    WK["Secrets: .env<br/>LLM sees no credentials, typed tools only<br/>code guard for bookings and consent"]
+  end
+  subgraph PG["Postgres"]
+    RO[("frontend_reader<br/>SELECT on 4 masked views, read-only")]
+    BE[("postgres role<br/>RLS on every table, API roles no access<br/>booking functions not callable via API")]
+  end
+  TP["Third parties<br/>LiveKit · Sarvam · Azure · Google"]
+  BR -->|"HTTPS + session cookie"| NX
+  NX -->|"TLS, CA-verified"| RO
+  WK -->|"TLS, CA-verified"| BE
+  WK -.-> TP
 ```
 
 <details>
@@ -722,17 +977,20 @@ Supabase Postgres (Mumbai) is the source of truth (migrations in `data/migration
 
 ---
 
-## 9. Configuration and running
+## 11. Configuration and running
 
 | File | Holds |
 |---|---|
-| `.env` (git-ignored; template `.env.example`) | Worker: LiveKit, Sarvam, Azure (and optional fallback), database URL and CA, calendar, limits (`MAX_CONCURRENT_CALLS`, `MAX_CALL_MINUTES`, `HOLD_AFTER_S`, `LLM_ATTEMPT_TIMEOUT_S`), `LOG_FILE` |
+| `.env` (git-ignored; template `.env.example`) | Worker: LiveKit, Sarvam, Azure (and optional fallback), database URL and CA, calendar, limits (`MAX_CONCURRENT_CALLS`, `MAX_CALL_MINUTES`, `HOLD_AFTER_S`, `LLM_ATTEMPT_TIMEOUT_S`), `NOISE_CANCELLATION` (`bvc`/`nc`/`off`), the advisor (`ADVISOR` = `on`/`shadow`/`off`, `SIGNAL_PROVIDER` = `nano`/`laya`, `SIGNAL_DEPLOYMENT`, `LAYA_*`), `LOG_FILE` |
 | `frontend/.env.local` (git-ignored; template `.env.local.example`) | Website: LiveKit keys, `AGENT_NAME`, read-only `DATABASE_URL` and CA, `DEMO_PASSCODE`, `SESSION_SECRET` |
 
 ```bash
 uv run python -m honda_voice.agent.worker dev          # the agent, connected to LiveKit Cloud
 cd frontend && corepack pnpm@9.15.9 dev                # the website on http://localhost:3000
-uv run python -m evals.run_text_evals                  # 45 scripted conversations (real LLM + DB)
+make test                                              # lint + unit + frontend tests (no DB, no network)
+make evals                                             # 55 scripted conversations (real LLM + DB)
+make signals                                           # caller-signal accuracy on 150 labelled turns
+make help                                              # every shortcut
 ```
 
 All commands, rules and conventions: [CLAUDE.md](../CLAUDE.md). Full specification, measurements and decision history: [SPEC.md](SPEC.md).

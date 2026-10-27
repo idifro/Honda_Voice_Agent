@@ -1,11 +1,11 @@
 # Honda 2-Wheeler Voice Assistant (POC)
 
-A browser-based voice agent for a Honda two-wheeler showroom. Callers speak **Tamil, English, Hindi (Hinglish), Telugu, Malayalam or Kannada**; the agent replies in the caller's language, answers questions about models, prices, specs and showroom hours, and books or cancels test rides. Bookings are stored in Postgres (Supabase) and copied to a shared Google Calendar.
+A browser-based voice agent for a Honda two-wheeler showroom. Callers speak **Tamil, English, Hindi (Hinglish), Telugu, Malayalam or Kannada**; the agent replies in the caller's language, answers questions about models, prices, specs and showroom hours, suggests models for the caller's needs with demo EMI examples, books or cancels test rides, and records callback requests (with consent) as scored leads. Bookings are stored in Postgres (Supabase) and copied to a shared Google Calendar.
 
 - How it works: [docs/architecture.md](docs/architecture.md) (components, models, workflows, diagrams)
 - Full specification and decision history: [docs/SPEC.md](docs/SPEC.md)
 - Rules for working on the code: [CLAUDE.md](CLAUDE.md)
-- Demo call script: [docs/DEMO.md](docs/DEMO.md)
+- Demo call scripts and the use cases you can show: [docs/DEMO.md](docs/DEMO.md)
 
 ## What you need
 

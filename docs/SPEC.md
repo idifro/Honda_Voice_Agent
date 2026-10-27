@@ -24,42 +24,34 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 
 ## 2. Scope
 
-**In scope:** one showroom; the full current Honda India lineup (33 models) with variants; six languages (Hindi/Hinglish, English, Tamil, Telugu, Malayalam, Kannada) with the reply language following the caller (§4.1); price/spec/mileage Q&A; whether the showroom is open on a given day/time; simple two-model comparison within Honda; test-ride booking and cancellation; callback lead capture as fallback; browser client with visualizer, transcript, and live bookings panel.
+**In scope:** one showroom; the full current Honda India lineup (33 models) with variants; six languages (Hindi/Hinglish, English, Tamil, Telugu, Malayalam, Kannada) with the reply language following the caller (§4.1); price/spec/mileage Q&A; whether the showroom is open on a given day/time; simple two-model comparison within Honda; test-ride booking and cancellation; a sales advisor that suggests models for a need, gives demo EMI examples and steers toward a test ride or callback (Phase 7, §20); callback leads with explicit consent, a lead score and an after-call summary, and a customer list; browser client with visualizer, transcript, live bookings panel, Leads tab (CSV export) and a live caller-profile card. The use cases this enables, with lines to say, are listed in [DEMO.md](DEMO.md#use-cases-you-can-demonstrate) and [architecture.md](architecture.md#use-cases).
 
 **Out of scope (non-goals):** PSTN/SIP telephony, Indian languages beyond the six above, *calculating* on-road prices (published Delhi on-road prices are in scope, §6), real finance offers (demo EMI examples from code are in scope since Phase 7, §20.4), scraping the OEM website, multiple showrooms, an admin UI, and authentication beyond a shared demo passcode.
 
 ## 3. Architecture
 
-```text
-[ Next.js client (LiveKit agent-starter-react) ]
-   visualizer · control bar · transcript · bookings panel (polls /api/bookings)
-                 │ WebRTC (Opus)
-                 ▼
-[ LiveKit Cloud room ]  ←— agent explicitly dispatched via token (agent_name="honda-sales")
-                           (Phase 10: self-hosted LiveKit server, §24)
-                 │
-                 ▼
-[ Python worker: LiveKit AgentSession ]
-   VAD: Silero
-   Turn detection: LiveKit multilingual turn detector (fallback: STT-based)
-   STT: Sarvam saaras:v4, codemix, language auto-detect → per-turn caller language (§4.1)
-   LLM: one fast tool-calling model (chosen in Phase 1)
-   Agents (handoff via tool call, no extra LLM hop per turn):
-     ├─ SalesAgent   — greeting + language choice, catalog Q&A, showroom hours, comparisons, competitor pivot
-     └─ BookingAgent — collects + confirms details, reserves slot, cancels
-   Sales advisor (Phase 7): gpt-5.4-nano reads each turn in parallel (never delays audio) → caller
-                            profile → one suggested move per turn (code) → scored lead at call end (§20)
-   tts_node override → streaming text transforms (§9)
-   TTS: Sarvam bulbul:v4-flash, speaker "aarti_hi_customer" in all six languages,
-        language_code set per turn from the session language; pronunciation dictionary
-                 │
-                 ▼
-[ Supabase Postgres ] ←— asyncpg pool (session pooler)   (Phase 11: local Postgres, §24)
-   catalog (bikes, variants, aliases) · showrooms · slots · bookings · leads
-   reserve_slot() / cancel_booking() Postgres functions (atomic)
-                 │ after commit (async, retried)
-                 ▼
-[ Google Calendar ] showroom calendar shared with the service account (mirror only)
+```mermaid
+flowchart TD
+  FE["Next.js client (LiveKit agent-starter-react)<br/>visualizer · control bar · transcript<br/>Bookings · Models · Leads tabs · Caller profile card"]
+  LK["LiveKit Cloud room<br/>agent explicitly dispatched via token (agent_name=honda-sales)<br/>Phase 10: self-hosted LiveKit server, §24"]
+  subgraph W["Python worker: LiveKit AgentSession"]
+    PIPE["BVC filter · Silero VAD · multilingual turn detector<br/>STT: Sarvam saaras:v4, codemix → session language (§4.1)<br/>LLM: Azure gpt-5.4-mini (fallback gpt-5.4-nano)"]
+    SA["SalesAgent (advisor style): greeting + language, catalog Q&A,<br/>recommend_bikes, emi_examples, hours, comparisons,<br/>competitor pivot, capture_lead with consent"]
+    BA["BookingAgent: collects + confirms details,<br/>reserves slot, cancels"]
+    ADV["Sales advisor (§20): gpt-5.4-nano signals in parallel →<br/>caller profile → one move per turn (code) →<br/>summary + lead score at call end"]
+    TTSN["tts_node: streaming text transforms (§9)<br/>TTS: Sarvam bulbul:v4-flash, aarti_hi_customer,<br/>language set per turn"]
+    SA <-->|"handoff via tool call"| BA
+    ADV -.->|"coach line"| SA
+    SA --> TTSN
+    BA --> TTSN
+  end
+  DB[("Supabase Postgres (asyncpg, session pooler)<br/>catalog · bike_fit · finance_schemes · showrooms · slots<br/>bookings · calls · caller_profiles · call_signals · leads · customers<br/>reserve_slot() / cancel_booking() atomic<br/>Phase 11: local Postgres, §24")]
+  GC["Google Calendar<br/>showroom calendar, mirror only"]
+  FE <-->|"WebRTC (Opus)"| LK
+  LK <--> W
+  W --> DB
+  FE -->|"server routes, read-only masked views"| DB
+  DB -.->|"after commit (async, retried)"| GC
 ```
 
 **Why no LangGraph / supervisor:** a supervisor adds a full LLM round trip to every turn, and a post-hoc guardrail node forces buffering, which removes streaming. LiveKit's native agent handoff gives the same separation of concerns at zero cost on turns that don't change agent. If LangGraph becomes a hard requirement later, wrap a single-node graph with LiveKit's LangChain adapter; do not add a routing hop.
@@ -97,7 +89,7 @@ The POC **passes** if it meets these on the eval set (§15) and in five live dem
 Six languages: `hi-IN` (Hinglish), `en-IN`, `ta-IN`, `te-IN`, `ml-IN`, `kn-IN` (`SUPPORTED_LANGUAGES`). **Code decides the reply language; the LLM never guesses it** (same principle as rule 12). Measured 2026-10-15: when the prompt only said "reply in the caller's language", Tamil, Telugu and Malayalam callers got Hinglish replies. With the language passed explicitly, the replies matched (Telugu came back in Roman script once; see risks).
 
 - **Detection:** STT runs with `language="unknown"`. Each final transcript carries a detected language (probability 1.0 on every test clip).
-- **Session language (`domain/language.py`, pure, unit-tested):** starts as `GREETING_LANGUAGE` (`ta-IN`). It switches to the detected language only when a final transcript has ≥ 3 words **and** the detection probability is ≥ 0.6 (or not reported), so one-word answers like "ok", "haan" or "yes" don't flip it. (Changed in step 5 from "words **or** probability ≥ 0.9": Sarvam reported probability 1.0 on every clip, including one-word ones, so probability alone can't protect short answers.) An explicit request ("English mein bolo", "Tamil la pesunga", "తెలుగులో"), or a bare language name such as an answer to the greeting's question, always switches. If more than one language is named, nothing changes. A script check (`script_mismatch`) logs replies in the wrong script, e.g. Telugu in Roman letters, as guardrail violations.
+- **Session language (`domain/language.py`, pure, unit-tested):** starts as `GREETING_LANGUAGE` (`ta-IN`). It switches to the detected language only when a final transcript has ≥ 3 words **and** the detection probability is ≥ 0.6 (or not reported), so one-word answers like "ok", "haan" or "yes" don't flip it. **The transcript's native script outranks STT's tag** (2026-10-19): a turn in Tamil, Telugu, Malayalam, Kannada or Devanagari script is taken as that language (Latin script is ambiguous, so STT's tag decides), since Sarvam tagged a 3-word Tamil-script turn `hi-IN` in a live call. (Changed in step 5 from "words **or** probability ≥ 0.9": Sarvam reported probability 1.0 on every clip, including one-word ones, so probability alone can't protect short answers.) An explicit request ("English mein bolo", "Tamil la pesunga", "తెలుగులో"), or a bare language name such as an answer to the greeting's question, always switches. If more than one language is named, nothing changes. A script check (`script_mismatch`) logs replies in the wrong script, e.g. Telugu in Roman letters, as guardrail violations.
 - **LLM:** each turn's instructions include `[caller_language] <name>` plus the script rule: Hindi = Roman-script Hinglish; English = English; Tamil, Telugu, Malayalam, Kannada = native script, with brand/model names and words like *test ride*, *ex-showroom* kept in English.
 - **TTS:** `language_code` = session language, updated before each reply.
 - **Tools:** `spoken_price` and spoken slot times are rendered in the session language by `domain/` formatters (§9, §10); the LLM repeats them verbatim.
@@ -279,7 +271,9 @@ All tools are `@function_tool` methods with pydantic-typed arguments. Each retur
 | `list_bikes` | `segment?: str, max_price_inr?: int` | Up to 4 models, cheapest first (one of the 17 segments; budget as a plain rupee number), each with `ex_showroom_from_spoken` and `on_road_from_spoken`. |
 | `compare_bikes` | `a: str, b: str` | Both resolved like `find_bike` (Honda only; unresolved → ask which). Returns key fields side by side: segment, engine, mileage, ex-showroom range, on-road from, and verified key specs. |
 | `start_booking` | `model?, day_ref?, time_24h?` | Hands off to `BookingAgent` with chat context (step 13). The model is resolved by `Catalog.find_one`: a model's own name settles it even when a longer one contains it ("Shine 100" vs "Shine 100 DX"), a bare family name ("activa") leaves it unset so BookingAgent asks. If the caller already gave a day, **BookingAgent runs the slot search in code on entry** and replies from it (step 14: the LLM once claimed "6 baje theek rahega" without checking; this also saves one LLM call). Pre-booking and upcoming models aren't handed over: the note says to offer a callback lead. |
-| `capture_lead` | `reason, name?, phone?, interest?` | On both agents (shared base). Fallback path; writes to `leads` in the session language. An invalid phone is refused unless the phone tries are used up. |
+| `recommend_bikes` | `use_case?, rider?, priorities?, budget_inr?, experience?` | Phase 7 (§20.4, §20.10). Code (`domain/recommend.py`) ranks on-sale models from `bike_fit` and the catalog and returns 2–3 with one verified reason each; the caller profile fills in what this turn didn't say. |
+| `emi_examples` | `model, variant?` | Phase 7. Demo EMIs from `domain/finance.py` (catalog ex-showroom price × each demo scheme), in `*_spoken` fields, always called an example. |
+| `capture_lead` | `reason, name?, phone?, interest?, caller_confirmed?` | On both agents (shared base). Writes to `leads` in the session language. An invalid phone is refused unless the phone tries are used up. Since Phase 7, a validated number first gets the consent read-back (`LEAD_CONSENT`, spoken from code); it saves only on a later turn's yes for the same number, with a `customers` row (§20.11). |
 
 **Shared call state (step 13).** A handoff creates a new Agent object, so the session language, STT detection, caller turn count, chosen model and booking draft live in `agent/call_state.CallState`, shared by every agent of the call. `agent/base_agent.MultilingualAgent` holds what both agents do each turn: the language decision and tag in `llm_node`, TTS retargeting and streaming cleanup in `tts_node`. The receiving agent replies on entry (`generate_reply`), because a bare handoff tool doesn't reply itself.
 
@@ -384,6 +378,7 @@ Applied in an overridden `tts_node` as **streaming** transforms (chunk-in, chunk
 - **Sign-in:** `POST /api/login {passcode}` checks `DEMO_PASSCODE` in constant time (rate limit: 5 a minute per IP) and sets `hv_session`: an HS256 JWT signed with `SESSION_SECRET`, 2 h, `HttpOnly`, `SameSite=Strict`, `Secure` in production. The page renders the passcode screen (with the privacy notice) until the cookie is valid; `POST /api/logout` clears it. Every API route below requires the cookie.
 - `app/api/token/route.ts` (the template's path): replaces the template route, which had no authentication and let the browser choose the room configuration, i.e. which agent is dispatched. **The request body is ignored**; the server picks a random room (`honda-<uuid>`) and identity, grants join + subscribe + **microphone only**, no data publishing, no admin, a **10-minute** token, and a room configuration that **explicitly dispatches** `AGENT_NAME` (`honda-sales`). Rate limit: 10 a minute per IP.
 - `app/api/bookings/route.ts`: reads `frontend.bookings` (already masked by the database) through the `frontend_reader` role; the panel polls every 5 s (paused in a background tab). `app/api/catalog/route.ts`: models and ex-showroom prices from `frontend.catalog`.
+- Phase 7 (§20.11): `app/api/leads/route.ts` (Leads tab, hottest first), `app/api/leads/export/route.ts` (CSV, formula-injection escaped; helpers in `lib/server/leads.ts`), and `app/api/profile/route.ts` (`?room=`, token-route room names only), which the live Caller profile card polls every 3 s. Both read masked views (`frontend.leads`, `frontend.caller_profiles`).
 - **Database TLS:** node-postgres connected in cleartext by default (found in Phase 5); `lib/server/db.ts` uses TLS with Supabase's root CA (`certs/`, via `DATABASE_CA_CERT`), verifying the chain and host name.
 - **Headers:** `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy: microphone=(self), camera=(), geolocation=()`, no `X-Powered-By`.
 - Voice only: the caller can't send text or data (chat input off); the transcript is always shown (one change in the template's session view). Calls end after `MAX_CALL_MINUTES` (worker, §16).
@@ -512,6 +507,7 @@ Known LLM variance (not fixed, reported): occasional 41–50-word replies, rare 
 4. Leads: consent, lead score, call summary, `customers`, Leads and Caller-profile panels, CSV export, privacy notice. **Built 2026-10-20** (§20.11).
 5. Optional, later: train Laya on nano's labels; switch provider only if it matches nano.
 *Exit:* §20.8 targets met; all existing scenarios pass; p50 TTFA unchanged (±50 ms) vs Phase 6.
+**Status (2026-10-21): steps 0–4 built and committed; exit pending one live call.** Labelled set: nano 96–99 % per language (target 90 %). Scenarios: 55 in total, all passing on the last runs (one known variance: "bare family name" passes about half the time). Tests: 429 unit, 71 database, 18 frontend. Still to measure live: p50 TTFA against Phase 6, and the Caller profile, summary and lead appearing in the browser.
 
 **Phase 8 — LangGraph orchestration, A/B (§21).** Build the graph behind `ORCHESTRATOR=langgraph` without removing the native path. Run the latency A/B across three router configs.
 *Exit:* latency report comparing configs in §21.3; decision recorded here (adopt / adopt with decision-model router / stay native) with reasons.
@@ -543,7 +539,11 @@ Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya (§23); Laya
 
 **Conversation evals (`evals/`):**
 - `scenarios/*.yaml` (step 14): **45 scripted text conversations** in 11 files: price ×6, comparison ×3, competitor ×3, booking happy path ×5, misheard/invalid phone ×3, slot taken ×2, cancellation ×2, out of scope ×3, language (intro, switches, explicit request) ×4, Tamil/Telugu/Malayalam/Kannada price + booking ×8, other paths ×6 (hours, budget list, one spec, upcoming model, no licence, price question mid-booking). Each turn gives the caller's words and the STT language; expectations are per turn (`tools`, `no_tools`, `slots_checked`, `time_24h` (the time the LLM extracted; added 2026-10-20 after "shaam saade chaar" came out as 15:30/15:45), `says_any/all/none`, `price`, `language`, `intro`, `honda_pivot`, `max_words`) and per scenario (`said_any` (any reply in the call; added in Phase 7), `booked`, `cancelled`, `book_errors`, `leads`, and the stored booking row: model, time, name, phone, language, licence). Hooks simulate other callers taking the slot; cancellations use a booking made before the call.
-- `scenarios/demo.yaml` (Phase 6): the live demo script ([DEMO.md](DEMO.md)) as one conversation, so it's re-proven by every pre-demo check. 46 scenarios in total.
+- `scenarios/demo.yaml` (Phase 6): the live demo script ([DEMO.md](DEMO.md)) as one conversation, so it's re-proven by every pre-demo check.
+- `scenarios/advisor.yaml` (Phase 7): 9 conversations with real nano signals between turns (`advisor: true`): mom's scooter, budget commuter, Tamil delivery EV, price objection with EMI, browsing, frustrated caller, ready buyer, callback with consent, callback declined. Scenario checks added: `consented_customers`, `said_any`. **55 scenarios in total.**
+- `evals/signals_labelled.py` + `evals/signals/cases.yaml` (Phase 7): 150 labelled turns, accuracy per language and question for nano (and Laya if running), §20.8.
+- **Phase 7 unit and database tests:** `test_signals.py` (questions, parsing, profile merge, background runtime), `test_advisor.py` (ranking, every move rule, both tools), `test_leads.py` (consent read-back, lead score, summary scrub and request), `test_finance.py` (EMI against published loan figures), `test_room_options.py` (noise cancellation), `integration/test_calls_db.py` (calls, signals, profile, customer upsert, end-of-call linking); Vitest for the leads, CSV and profile routes.
+- **Shortcuts:** `make test` (lint, unit and frontend tests: no database or network), `make test-integration`, `make evals`, `make signals`, `make check` (= `scripts/check_all.sh`); `make help` lists them.
 - **Pre-demo check:** `scripts/check_all.sh` runs lint, unit, database and frontend tests and the conversations (`--min-pass 0.95`: LLM variance), and prints a pass/fail summary; `SKIP_EVALS=1` for the quick version.
 - `run_text_evals.py` runs them against the real LLM and database through `session.run()`, with no audio, and checks every turn for: reply language and script, ≤ 40 words (41–50 is a warning; a scenario can allow more, e.g. a full on-road breakdown), prices verbatim from tool output (a Tamil case ending on the rupee word is accepted), echoed tags, booking only on a turn where the caller said yes, licence recorded only after a yes. Bookings use room `eval-text` and are cancelled and deleted afterwards; leads with eval numbers (90000xxxxx) too. Flags: `--only`, `--tag`, `--deployment/--model`. It replaces the Phase 1 and step 13 one-off scripts.
 - **Results (2026-10-15, `gpt-5.4-mini`):** the first run passed 34/42 and exposed real defects, fixed in code where possible (handoff slot search, slot ids → day/time, read-back must directly precede the yes, licence turn rule, competitor pivots, out-of-scope detection, tag filter in `llm_node`, time words in both prompts, script rule per language, comparison prices). Final five runs: **45/45, 41/45 (before the last fixes), 45/45, 44/45, 44/45**. The last two failures were the guard doing its job (a booking refused because the LLM skipped a new read-back; a licence "yes" attempted on the handoff turn and refused); the scenario and the check were adjusted, not the guard. First-LLM-call TTFT p50 ≈ 0.8 s, p90 ≈ 1.0 s. Residual LLM variance: replies of 41–50 words appear in a few turns per run.
@@ -560,8 +560,8 @@ Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya (§23); Laya
 
 ## 17. Privacy
 
-- There is no spoken recording-consent step (removed 2026-10-15 at the product owner's request), and agent sessions are not recorded (`record=False`). Name and phone are personal data under India's DPDP Act: the frontend shows a privacy notice on the sign-in screen and before a call (what is processed live and by whom, what a booking stores, the masked calendar copy). **Still open:** the same notice in the README.
-- Collect only name, phone, preferred slot and the licence answer. Mask phone numbers in logs, the calendar and the UI; the frontend only ever receives masked values (the `frontend_reader` role can't read the raw columns).
+- There is no spoken recording-consent step (removed 2026-10-15 at the product owner's request), and agent sessions are not recorded (`record=False`). Name and phone are personal data under India's DPDP Act: the frontend shows a privacy notice on the sign-in screen and before a call (what is processed live and by whom, what a booking stores, the masked calendar copy). The same notice is in the README. Since Phase 7 it also covers the caller-profile categories, the call summary, and consent before any callback.
+- Collect only name, phone, preferred slot and the licence answer, plus (Phase 7) the caller-profile categories (no transcript text, no sensitive inferences), a scrubbed call summary, and callback consent with its time and wording version (`customers`). Mask phone numbers in logs, the calendar and the UI; the frontend only ever receives masked values (the `frontend_reader` role can't read the raw columns).
 - **Data in transit:** browser audio is encrypted by WebRTC (DTLS-SRTP), the API runs over HTTPS in production, and both the worker and the Next.js server verify the database's TLS certificate against Supabase's root CA (`certs/supabase-prod-ca-2021.crt`, `DATABASE_CA_CERT`).
 - **Processors:** Sarvam (audio), Azure OpenAI (transcripts; content filter on), Google Calendar (masked booking copy), LiveKit Cloud (media relay), Supabase (database).
 - If recordings are enabled, store them for at most 30 days in the POC and document this in the README. (India's DPDP Act applies to the personal data collected.)
@@ -571,8 +571,9 @@ Jev (TypeSafe AI, paid) was dropped on 2026-10-15 in favour of Laya (§23); Laya
 ```text
 honda-voice-poc/
 ├── CLAUDE.md
-├── docs/SPEC.md
+├── docs/{SPEC,architecture,DEMO}.md, docs/diagrams/*.drawio
 ├── README.md
+├── Makefile                    # make help: test, test-integration, evals, signals, check
 ├── pyproject.toml / uv.lock
 ├── .env.example
 ├── docker-compose.yml          # Phase 10/11 only: local LiveKit + Postgres (§24)
@@ -595,7 +596,8 @@ honda-voice-poc/
 │   ├── retry_calendar_sync.py
 │   ├── check_calendar.py       # calendar setup check: create, read, delete a test event
 │   ├── set_frontend_db_password.py  # password for the read-only frontend role -> frontend/.env.local
-│   └── latency_report.py
+│   ├── latency_report.py
+│   └── check_all.sh            # pre-demo gate (make check)
 ├── src/honda_voice/
 │   ├── __init__.py
 │   ├── config.py                 # pydantic-settings; builds LLM from env
@@ -603,7 +605,8 @@ honda-voice-poc/
 │   │   ├── pool.py               # asyncpg pool (session pooler)
 │   │   ├── catalog.py            # find/list/compare queries
 │   │   ├── catalog_seed.py       # catalog JSON → validated rows → transactional upsert
-│   │   ├── bookings.py           # reserve/cancel/lead/slot queries
+│   │   ├── bookings.py           # reserve/cancel/lead/slot queries, customers upsert with consent
+│   │   ├── calls.py              # calls row, per-turn signals, profile, end-of-call linking and scores
 │   │   └── calendar_sync.py      # background calendar mirror, retries, status
 │   ├── domain/
 │   │   ├── pricing.py            # format_inr_spoken(amount, lang)
@@ -616,7 +619,9 @@ honda-voice-poc/
 │   │   ├── advisor.py            # next-move rules from the caller profile (§20.3)
 │   │   ├── recommend.py          # rank models for a need (§20.4)
 │   │   ├── finance.py            # demo EMI from scheme + catalog price
-│   │   └── lead_score.py         # hot / warm / cold
+│   │   ├── lead_score.py         # hot / warm / cold + next action
+│   │   ├── alias_match.py        # longest alias wins
+│   │   ├── catalog_view.py       # tool output for a model (verified fields only)
 │   │   └── scope.py              # out-of-scope topics, price questions
 │   ├── integrations/
 │   │   └── gcalendar.py          # Calendar API client: create/get/delete event
@@ -625,7 +630,8 @@ honda-voice-poc/
 │   │   ├── nano_signals.py       # gpt-5.4-nano structured output (default)
 │   │   ├── laya_client.py        # optional local Laya provider (§23)
 │   │   ├── questions.py          # profile questions (§20.2)
-│   │   └── profile.py            # merge signals into the caller profile
+│   │   ├── profile.py            # merge signals into the caller profile
+│   │   └── summary.py            # after-call summary (nano) + scrub
 │   ├── graph/                    # Phase 8
 │   │   ├── state.py
 │   │   ├── router.py             # decision | rules | llm
@@ -637,6 +643,8 @@ honda-voice-poc/
 │   └── agent/
 │       ├── prompts.py
 │       ├── call_state.py         # per-call state shared across handoffs
+│       ├── advisor.py            # Phase 7 runtime: background signals, coach line, call close
+│       ├── hold.py               # hold line after 2 s of thinking
 │       ├── base_agent.py         # language, tts_node cleanup, capture_lead (both agents)
 │       ├── sales_agent.py
 │       ├── booking_agent.py
@@ -645,12 +653,14 @@ honda-voice-poc/
 │       └── worker.py             # entrypoint, AgentSession config
 ├── certs/                        # public CA certificate for verified DB TLS (not a secret)
 ├── frontend/                     # from LiveKit agent-starter-react (MIT)
-│   ├── app/api/{login,logout,token,bookings,catalog}/route.ts
-│   ├── lib/server/               # config, passcode, session cookie, rate limits, read-only DB
-│   ├── components/app/           # sign-in, privacy notice, side panel (bookings, models)
-│   └── tests/                    # Vitest: auth, token claims, rate limits
+│   ├── app/api/{login,logout,token,bookings,catalog,leads,leads/export,profile}/route.ts
+│   ├── lib/server/               # config, passcode, session cookie, rate limits, read-only DB, leads CSV
+│   ├── components/app/           # sign-in, privacy notice, side panel (bookings, models, leads, caller profile)
+│   └── tests/                    # Vitest: auth, token claims, rate limits, leads, CSV, profile
 ├── evals/
-│   ├── scenarios/*.yaml
+│   ├── scenarios/*.yaml          # 55 scripted conversations (advisor.yaml: Phase 7)
+│   ├── signals/cases.yaml        # 150 labelled turns (§20.8)
+│   ├── signals_labelled.py
 │   ├── recordings/               # git-ignored
 │   ├── run_text_evals.py
 │   └── calendar_e2e.py           # Phase 4 exit check against the real calendar
@@ -692,15 +702,20 @@ honda-voice-poc/
 
 ### 20.1 Flow
 
+```mermaid
+flowchart LR
+  T["Caller turn"] --> STT["STT"] --> R["Reply LLM (SalesAgent)"] --> TTS["TTS"]
+  STT -.->|"committed message, in parallel"| N["nano signals<br/>~1.2 s, never awaited"]
+  N --> P["Caller profile"]
+  P --> M["Next-move rules<br/>(code, domain/advisor.py)"]
+  M -.->|"coach line on the next turn:<br/>one suggested move"| R
+  R <-->|"recommend_bikes · emi_examples"| TOOLS["Tools (code)"]
+  P --> FIN["Call end: calls row, summary,<br/>lead score, customer links"]
+  FIN --> UI["Leads tab · CSV export"]
+  P -.-> CARD["Caller profile card (live)"]
 ```
-caller turn ─► STT ─► reply LLM (SalesAgent) ──────────────────────────► TTS        unchanged; no added delay
-                 │          ▲  coach line (one suggested move) + recommend_bikes / emi_examples tools
-                 │          │
-                 ▼          │
-        nano signals (parallel, ~1.3 s) ─► caller profile ─► next-move rules (code, domain/advisor.py)
-                                                 │
-                         call end ───────────────┴─► calls row, lead + score, summary ─► Leads panel / CSV
-```
+
+The reply path (top row) is unchanged and adds no delay; everything dotted runs beside it. See [architecture.md §7–8](architecture.md#7-workflow-the-sales-advisor-phase-7) for the sequence and consent diagrams.
 
 - **Signals** fire when a caller turn is final, in parallel with the reply, over the last 4 turns plus agent state. Results merge into the profile and apply from the **next** turn. A late or failed call changes nothing; it never delays audio.
 - **Same turn:** the reply LLM reads the caller's words itself. For a need with no model named, it calls `recommend_bikes` with what it heard, so the first answer doesn't wait for the profile.
